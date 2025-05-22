@@ -31,7 +31,7 @@
             </select>
         </div>
         <div class="mb-3">
-            <label for="fecha_entrega" class="form-label">Fecha de Entrega (Opcional, formato: YYYY-MM-DD HH:MM)</label>
+            <label for="fecha_entrega" class="form-label">Fecha de Entrega (Opcional, formato:YYYY-MM-DD HH:MM)</label>
             <input type="datetime-local" class="form-control" id="fecha_entrega" name="fecha_entrega" value="{{ form_data.fecha_entrega if form_data.fecha_entrega else '' }}">
         </div>
         <div class="mb-3">
@@ -42,8 +42,10 @@
             <label for="observaciones_adicionales" class="form-label">Observaciones Adicionales</label>
             <textarea class="form-control" id="observaciones_adicionales" name="observaciones_adicionales" rows="3">{{ form_data.observaciones_adicionales if form_data.observaciones_adicionales else '' }}</textarea>
         </div>
-        <button type="submit" class="btn btn-success">Guardar Diagnóstico y Finalizar</button>
-        {# CORRECCIÓN DE LA LÍNEA QUE CAUSA EL ERROR #}
-        <a href="{{ url_for('diagnostico_equipo', cliente_ci=diagnostico.cliente_ci, diagnostico_id=diagnostico.id) }}" class="btn btn-secondary">Volver (Datos del Equipo)</a>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <button type="submit" class="btn btn-success btn-lg">Guardar Diagnóstico y Finalizar</button>
+            <a href="{{ url_for('diagnostico_equipo', cliente_ci=diagnostico.cliente_ci, diagnostico_id=diagnostico.id) }}" class="btn btn-secondary btn-lg">Volver (Datos del Equipo)</a>
+            <a href="{{ url_for('index') }}" class="btn btn-danger btn-lg">Cancelar y Volver al Inicio</a> {# Nuevo botón de cancelar #}
+        </div>
     </form>
 {% endblock %}

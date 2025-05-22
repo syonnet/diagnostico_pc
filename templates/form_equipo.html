@@ -61,8 +61,8 @@
                     <button type="submit" class="btn btn-primary btn-lg">
                         {{ 'Actualizar Datos del Equipo' if diagnostico else 'Guardar Datos del Equipo y Continuar' }}
                     </button>
-                    <a href="{{ url_for('ver_diagnostico', diagnostico_id=diagnostico.id) if diagnostico else url_for('listar_diagnosticos') }}" class="btn btn-secondary btn-lg">
-                        Cancelar
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary btn-lg"> {# Volver al inicio #}
+                        Cancelar y Volver al Inicio
                     </a>
                 </div>
             </form>

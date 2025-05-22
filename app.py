@@ -7,7 +7,8 @@ import os
 import re
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here' # ¡IMPORTANTE! Cambia esto por una clave secreta fuerte y única
+# ¡IMPORTANTE! Cambia esto por una clave secreta fuerte y única para producción
+app.secret_key = 'your_secret_key_here' 
 app.debug = True
 
 # Inicializar la base de datos al inicio de la aplicación
@@ -16,16 +17,20 @@ with app.app_context():
 
 # Función auxiliar para limpiar el nombre del cliente para el nombre del archivo
 def _limpiar_nombre_archivo(nombre):
+    # Reemplaza caracteres no alfanuméricos (excepto espacios y guiones) con un guion bajo
     nombre_limpio = re.sub(r'[^\w\s-]', '', nombre)
+    # Reemplaza espacios con guiones bajos
     nombre_limpio = re.sub(r'\s+', '_', nombre_limpio)
+    # Elimina guiones bajos duplicados o al inicio/final
     nombre_limpio = re.sub(r'_+', '_', nombre_limpio).strip('_')
-    return nombre_limpio.lower()
+    return nombre_limpio.lower() # Opcional: convertir a minúsculas
 
 @app.route('/')
 def index():
+    # Renderiza la página de inicio
     return render_template('index.html') 
 
-# --- RUTA: Listado y Búsqueda de Diagnósticos (Existente) ---
+# --- RUTA: Listado y Búsqueda de Diagnósticos ---
 @app.route('/diagnosticos')
 def listar_diagnosticos():
     db = get_db()
@@ -42,10 +47,12 @@ def listar_diagnosticos():
     """
     params = []
 
+    # Lógica de búsqueda
     search_query = request.args.get('q', '').strip()
     search_type = request.args.get('type', 'all').strip()
     
     if search_query:
+        # Añadir cláusulas WHERE basadas en el tipo de búsqueda
         if search_type == 'cliente':
             query += " AND (c.nombre LIKE ? OR c.telefono LIKE ? OR c.ci LIKE ?)" 
             params.extend([f'%{search_query}%', f'%{search_query}%', f'%{search_query}%'])
@@ -55,7 +62,7 @@ def listar_diagnosticos():
         elif search_type == 'estado':
             query += " AND d.estado_final LIKE ?"
             params.append(f'%{search_query}%')
-        else: # 'all'
+        else: # 'all' o cualquier otro valor, busca en todos los campos relevantes
             query += """
                 AND (
                     c.nombre LIKE ? OR c.telefono LIKE ? OR c.ci LIKE ? OR 
@@ -69,7 +76,7 @@ def listar_diagnosticos():
                 f'%{search_query}%', f'%{search_query}%'
             ])
     
-    query += " ORDER BY d.fecha_recepcion DESC"
+    query += " ORDER BY d.fecha_recepcion DESC" # Ordenar por fecha de recepción más reciente
 
     diagnosticos = db.execute(query, tuple(params)).fetchall()
     db.close()
@@ -79,7 +86,7 @@ def listar_diagnosticos():
                            search_query=search_query,
                            search_type=search_type)
 
-# --- NUEVA RUTA: Listado y Búsqueda de Clientes ---
+# --- RUTA: Listado y Búsqueda de Clientes ---
 @app.route('/clientes')
 def listar_clientes():
     db = get_db()
@@ -116,7 +123,7 @@ def listar_clientes():
 
 # --- Rutas de Formularios y Acciones ---
 
-# Ruta para generar y descargar el PDF (Existente)
+# Ruta para generar y descargar el PDF
 @app.route('/diagnostico/pdf/<int:diagnostico_id>')
 def descargar_pdf(diagnostico_id):
     db = get_db()
@@ -125,7 +132,7 @@ def descargar_pdf(diagnostico_id):
     if not diagnostico:
         db.close()
         flash('Diagnóstico no encontrado para generar PDF.', 'danger')
-        return redirect(url_for('listar_diagnosticos'))
+        return redirect(url_for('listar_diagnosticos')) # Redirige a la lista si no se encuentra
 
     cliente = db.execute('SELECT * FROM clientes WHERE ci = ?', (diagnostico['cliente_ci'],)).fetchone()
     db.close()
@@ -136,107 +143,147 @@ def descargar_pdf(diagnostico_id):
 
     cliente_nombre_limpio = _limpiar_nombre_archivo(cliente['nombre'])
     pdf_filename = f"informe_diagnostico_{cliente_nombre_limpio}_{diagnostico_id}.pdf"
+    # Asegúrate de que output_path apunta a un lugar donde la app tiene permisos de escritura
+    # app.root_path es la ruta donde se encuentra el archivo app.py
     output_path = os.path.join(app.root_path, pdf_filename)
 
     try:
         generate_diagnostico_pdf(dict(diagnostico), dict(cliente), output_path)
+        # Envía el archivo como adjunto para que se descargue
         return send_file(output_path, as_attachment=True, download_name=pdf_filename)
     except Exception as e:
         flash(f'Error al generar el PDF: {e}', 'danger')
+        # Importante: para propósitos de depuración, puedes imprimir el traceback
         import traceback
         traceback.print_exc()
         return redirect(url_for('ver_diagnostico', diagnostico_id=diagnostico_id))
         
-# --- RUTA MODIFICADA/RENOMBRADA: Gestión de Cliente (Creación y Edición) ---
-# Ahora acepta un cliente_ci opcional para edición
-@app.route('/cliente/gestion', methods=['GET', 'POST'])
-@app.route('/cliente/gestion/<string:cliente_ci>', methods=['GET', 'POST'])
-def gestion_cliente(cliente_ci=None):
-    db = get_db()
-    cliente = None # Cliente existente si estamos editando
-
-    if cliente_ci: # Modo edición
-        cliente = db.execute('SELECT * FROM clientes WHERE ci = ?', (cliente_ci,)).fetchone()
-        if not cliente:
-            db.close()
-            flash('Cliente no encontrado para edición.', 'danger')
-            return redirect(url_for('listar_clientes'))
-    
+# --- RUTA: Iniciar Nuevo Diagnóstico (Paso 1: Cliente) ---
+# Esta ruta maneja la entrada de CI para un nuevo diagnóstico,
+# y crea el cliente si no existe, o lo selecciona si ya existe.
+@app.route('/diagnostico/iniciar', methods=['GET', 'POST'])
+def iniciar_diagnostico():
     if request.method == 'POST':
         ci = request.form['ci'].strip()
-        nombre = request.form['nombre']
+        nombre = request.form.get('nombre')
         telefono = request.form.get('telefono')
         email = request.form.get('email')
         direccion = request.form.get('direccion')
+        
+        if not ci:
+            flash('La Cédula de Identidad es obligatoria para iniciar un diagnóstico.', 'danger')
+            return render_template('form_cliente_inicio.html', form_data=request.form)
 
-        if not ci or not nombre:
-            flash('La Cédula de Identidad y el nombre del cliente son obligatorios.', 'danger')
-            # Mantener los datos del formulario si hay un error de validación
-            form_data = request.form
+        db = get_db()
+        existing_client = db.execute('SELECT * FROM clientes WHERE ci = ?', (ci,)).fetchone()
+
+        if existing_client:
             db.close()
-            return render_template('form_cliente.html', 
-                                   cliente=cliente, # Pasar el objeto cliente para la plantilla (si estamos editando)
-                                   form_data=form_data)
-
-        try:
-            cursor = db.cursor()
-            if cliente_ci: # Es una actualización de un cliente existente
-                # Si la CI fue cambiada, verificar que la nueva CI no exista ya
-                if ci != cliente_ci:
-                    existing_client = db.execute('SELECT ci FROM clientes WHERE ci = ?', (ci,)).fetchone()
-                    if existing_client:
-                        db.close()
-                        flash(f'La nueva Cédula de Identidad {ci} ya está registrada para otro cliente.', 'danger')
-                        return render_template('form_cliente.html', 
-                                               cliente=cliente, # Pasar el objeto cliente original
-                                               form_data=request.form)
-                    # Si la CI cambia, también debemos actualizarla en los diagnósticos asociados
-                    cursor.execute("UPDATE diagnosticos SET cliente_ci = ? WHERE cliente_ci = ?", (ci, cliente_ci))
-
-                cursor.execute("""
-                    UPDATE clientes SET
-                        ci = ?, nombre = ?, telefono = ?, email = ?, direccion = ?
-                    WHERE ci = ?
-                """, (ci, nombre, telefono, email, direccion, cliente_ci))
-                db.commit()
+            flash(f'Cliente {existing_client["nombre"]} (CI: {ci}) seleccionado para el nuevo diagnóstico.', 'info')
+            return redirect(url_for('diagnostico_equipo', cliente_ci=ci))
+        else:
+            # Si el cliente no existe, debemos pedir el nombre para crearlo
+            if not nombre:
                 db.close()
-                flash('Datos del cliente actualizados exitosamente!', 'success')
-                return redirect(url_for('listar_clientes')) # Volver a la lista de clientes
-            else: # Es una nueva creación de cliente
-                # Verificar si la CI ya existe
-                existing_client = db.execute('SELECT ci FROM clientes WHERE ci = ?', (ci,)).fetchone()
-                if existing_client:
-                    db.close()
-                    flash(f'La Cédula de Identidad {ci} ya está registrada.', 'danger')
-                    return render_template('form_cliente.html', form_data=request.form)
-
+                flash(f'La Cédula de Identidad {ci} no está registrada. Por favor, ingrese el nombre del nuevo cliente.', 'danger')
+                # Pasa todos los datos del formulario para que no se pierdan
+                return render_template('form_cliente_inicio.html', form_data=request.form, ci_provided=ci)
+            
+            try:
+                cursor = db.cursor()
                 cursor.execute("""
                     INSERT INTO clientes (ci, nombre, telefono, email, direccion)
                     VALUES (?, ?, ?, ?, ?)
                 """, (ci, nombre, telefono, email, direccion))
                 db.commit()
                 db.close()
-                flash('Cliente registrado exitosamente!', 'success')
-                # Después de crear un cliente, podemos redirigir a la lista de clientes
-                # o a la página de nuevo diagnóstico con este cliente precargado
-                return redirect(url_for('listar_clientes')) 
+                flash(f'Nuevo cliente {nombre} (CI: {ci}) registrado y seleccionado para el diagnóstico.', 'success')
+                return redirect(url_for('diagnostico_equipo', cliente_ci=ci))
+            except sqlite3.IntegrityError as e: # Captura específica de error de unicidad
+                db.close()
+                # Verifica si el error es por la restricción de CI duplicada
+                if "UNIQUE constraint failed: clientes.ci" in str(e):
+                    flash(f'Error: La Cédula de Identidad {ci} ya está registrada. Por favor, use una CI diferente o seleccione el cliente existente.', 'danger')
+                else:
+                    flash(f'Error de base de datos al registrar el nuevo cliente: {e}', 'danger')
+                # Pasa todos los datos del formulario para que no se pierdan al regresar
+                return render_template('form_cliente_inicio.html', form_data=request.form, ci_provided=ci)
+            except sqlite3.Error as e: # Captura otros errores de sqlite
+                db.close()
+                flash(f'Error al registrar el nuevo cliente: {e}', 'danger')
+                # Pasa todos los datos del formulario para que no se pierdan al regresar
+                return render_template('form_cliente_inicio.html', form_data=request.form, ci_provided=ci)
+
+    # Si es GET, simplemente muestra el formulario para ingresar la CI
+    return render_template('form_cliente_inicio.html', form_data={})
+
+# --- RUTA: Edición de Cliente Existente ---
+# Esta ruta es solo para editar los datos de un cliente ya existente, no para iniciar un diagnóstico.
+@app.route('/cliente/editar/<string:cliente_ci>', methods=['GET', 'POST'])
+def editar_cliente(cliente_ci):
+    db = get_db()
+    cliente = db.execute('SELECT * FROM clientes WHERE ci = ?', (cliente_ci,)).fetchone()
+    
+    if not cliente:
+        db.close()
+        flash('Cliente no encontrado para edición.', 'danger')
+        return redirect(url_for('listar_clientes'))
+    
+    if request.method == 'POST':
+        ci_form = request.form['ci'].strip() # CI del formulario
+        nombre = request.form['nombre']
+        telefono = request.form.get('telefono')
+        email = request.form.get('email')
+        direccion = request.form.get('direccion')
+
+        if not ci_form or not nombre:
+            flash('La Cédula de Identidad y el nombre del cliente son obligatorios.', 'danger')
+            form_data = request.form
+            db.close()
+            return render_template('form_cliente.html', # Usamos form_cliente.html para la edición
+                                   cliente=cliente, 
+                                   form_data=form_data)
+
+        try:
+            cursor = db.cursor()
+            # Si la CI fue cambiada, verificar que la nueva CI no exista ya
+            if ci_form != cliente_ci:
+                existing_client = db.execute('SELECT ci FROM clientes WHERE ci = ?', (ci_form,)).fetchone()
+                if existing_client:
+                    db.close()
+                    flash(f'La nueva Cédula de Identidad {ci_form} ya está registrada para otro cliente.', 'danger')
+                    return render_template('form_cliente.html', 
+                                           cliente=cliente, 
+                                           form_data=request.form)
+                # Si la CI cambia, también debemos actualizarla en los diagnósticos asociados
+                cursor.execute("UPDATE diagnosticos SET cliente_ci = ? WHERE cliente_ci = ?", (ci_form, cliente_ci))
+
+            cursor.execute("""
+                UPDATE clientes SET
+                    ci = ?, nombre = ?, telefono = ?, email = ?, direccion = ?
+                WHERE ci = ?
+            """, (ci_form, nombre, telefono, email, direccion, cliente_ci))
+            db.commit()
+            db.close()
+            flash('Datos del cliente actualizados exitosamente!', 'success')
+            return redirect(url_for('listar_clientes')) 
         except sqlite3.Error as e:
-            flash(f'Error al guardar/actualizar cliente: {e}', 'danger')
+            flash(f'Error al actualizar cliente: {e}', 'danger')
             form_data = request.form
             db.close()
             return render_template('form_cliente.html', 
                                    cliente=cliente, 
                                    form_data=form_data)
 
-    # Si es GET, rellenar el formulario con los datos existentes si es modo edición
+    # Si es GET, rellenar el formulario con los datos existentes
     form_data = dict(cliente) if cliente else {}
     db.close()
     return render_template('form_cliente.html', 
-                           cliente=cliente, # Pasa el objeto cliente para la plantilla
+                           cliente=cliente, 
                            form_data=form_data)
 
 
-# Paso 2: Formulario de Equipo (Creación y Edición) (Existente)
+# Paso 2: Formulario de Equipo (Creación y Edición)
 @app.route('/diagnostico/equipo/<string:cliente_ci>', methods=['GET', 'POST'])
 @app.route('/diagnostico/equipo/<string:cliente_ci>/<int:diagnostico_id>', methods=['GET', 'POST'])
 def diagnostico_equipo(cliente_ci, diagnostico_id=None):

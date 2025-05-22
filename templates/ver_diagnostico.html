@@ -48,8 +48,9 @@
         </div>
     </div>
 
-    <div class="mt-4 text-center">
+    <div class="mt-4 text-center d-grid gap-2 d-md-flex justify-content-md-center">
         <a href="{{ url_for('descargar_pdf', diagnostico_id=diagnostico.id) }}" class="btn btn-success btn-lg">Exportar a PDF</a>
-        <a href="{{ url_for('diagnostico_cliente') }}" class="btn btn-secondary btn-lg">Nuevo Diagnóstico</a>
+        <a href="{{ url_for('iniciar_diagnostico') }}" class="btn btn-primary btn-lg">Nuevo Diagnóstico</a>
+        <a href="{{ url_for('listar_diagnosticos') }}" class="btn btn-secondary btn-lg">Volver a Diagnósticos</a>
     </div>
 {% endblock %}

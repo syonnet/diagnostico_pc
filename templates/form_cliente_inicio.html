@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Nuevo Diagnóstico - Cliente</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding-top: 20px; }
+        .container { max-width: 800px; }
+        .d-none { display: none !important; }
+        .d-block { display: block !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="mb-4">Iniciar Nuevo Diagnóstico: Datos del Cliente</h2>
+        <p class="lead">Ingrese la Cédula de Identidad del cliente. Si no existe, podrá registrarlo con sus datos básicos.</p>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('iniciar_diagnostico') }}">
+            <div class="mb-3">
+                <label for="ci" class="form-label">Cédula de Identidad (CI) <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="ci" name="ci" required
+                       value="{{ form_data.ci if form_data.ci else (ci_provided if ci_provided else '') }}">
+            </div>
+
+            {# y se harán requeridos por JS si la CI es nueva y el nombre está vacío. #}
+            <div id="newClientFields" style="display: none;">
+                <div class="mb-3">
+                    <label for="nombre" class="form-label">Nombre Completo del Cliente <span class="text-danger" id="nombreRequiredIndicator" style="display:none;">*</span></label>
+                    <input type="text" class="form-control" id="nombre" name="nombre"
+                           value="{{ form_data.nombre if form_data.nombre else '' }}">
+                </div>
+                <div class="mb-3">
+                    <label for="telefono" class="form-label">Teléfono</label>
+                    <input type="tel" class="form-control" id="telefono" name="telefono"
+                           value="{{ form_data.telefono if form_data.telefono else '' }}">
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Correo Electrónico</label>
+                    <input type="email" class="form-control" id="email" name="email"
+                           value="{{ form_data.email if form_data.email else '' }}">
+                </div>
+                <div class="mb-3">
+                    <label for="direccion" class="form-label">Dirección</label>
+                    <input type="text" class="form-control" id="direccion" name="direccion"
+                           value="{{ form_data.direccion if form_data.direccion else '' }}">
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    Continuar con Diagnóstico
+                </button>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary btn-lg">
+                    Volver al Inicio
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ciInput = document.getElementById('ci');
+            const newClientFields = document.getElementById('newClientFields');
+            const nombreInput = document.getElementById('nombre');
+            const nombreRequiredIndicator = document.getElementById('nombreRequiredIndicator');
+
+            function toggleNewClientFields() {
+                if (ciInput.value.trim() !== '') {
+                    newClientFields.style.display = 'block';
+                    // La lógica de 'required' para nombre se manejará en el backend,
+                    // pero visualmente podemos indicar que es requerido si la CI es nueva.
+                    // Para simplificar, aquí solo mostramos/ocultamos el div.
+                } else {
+                    newClientFields.style.display = 'none';
+                    // Limpiar valores cuando se ocultan los campos para evitar enviar datos no deseados
+                    nombreInput.value = '';
+                    document.getElementById('telefono').value = '';
+                    document.getElementById('email').value = '';
+                    document.getElementById('direccion').value = '';
+                }
+            }
+
+            // Llamar al cargar la página por si hay valores precargados (ej. por error de validación)
+            // Mostrar campos si ya hay CI o nombre cargados desde el backend
+            var showNewClientFields = "{{ 'true' if ci_provided or form_data.ci else 'false' }}";
+            if (showNewClientFields) {
+                newClientFields.style.display = 'block';
+            } else {
+                toggleNewClientFields();
+            }
+
+            // Escuchar cambios en el campo CI
+            ciInput.addEventListener('input', toggleNewClientFields);
+        });
+    </script>
+</body>
+</html>

@@ -46,14 +46,11 @@
             <hr class="my-4">
             <p>Selecciona una opción para comenzar:</p>
             <div class="btn-group" role="group" aria-label="Opciones principales">
-                <a href="{{ url_for('gestion_cliente') }}" class="btn btn-success btn-lg">
-                    <i class="bi bi-person-plus"></i> Nuevo Cliente
+                <a href="{{ url_for('iniciar_diagnostico') }}" class="btn btn-success btn-lg"> {# Cambiado de 'gestion_cliente' a 'iniciar_diagnostico' #}
+                    <i class="bi bi-plus-circle"></i> Iniciar Nuevo Diagnóstico
                 </a>
                 <a href="{{ url_for('listar_clientes') }}" class="btn btn-info btn-lg">
                     <i class="bi bi-people"></i> Gestionar Clientes
-                </a>
-                <a href="{{ url_for('gestion_cliente') }}" class="btn btn-primary btn-lg"> {# CAMBIO AQUÍ: APUNTA A gestion_cliente #}
-                    <i class="bi bi-plus-circle"></i> Nuevo Diagnóstico
                 </a>
                 <a href="{{ url_for('listar_diagnosticos') }}" class="btn btn-secondary btn-lg">
                     <i class="bi bi-list-ul"></i> Gestionar Diagnósticos
