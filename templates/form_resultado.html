@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Paso 3: Diagnóstico y Resultado{% endblock %}
+
+{% block content %}
+    <h2 class="mb-4">Paso 3: Diagnóstico y Resultado</h2>
+    <p class="lead">Cliente: <strong>{{ cliente_nombre }}</strong> | Equipo: <strong>{{ diagnostico.tipo_equipo }} - {{ diagnostico.marca }} {{ diagnostico.modelo }}</strong></p>
+    <p class="text-muted">Problema Reportado: {{ diagnostico.problema_reportado }}</p>
+
+    <form method="POST" action="{{ url_for('diagnostico_resultado', diagnostico_id=diagnostico.id) }}">
+        <div class="mb-3">
+            <label for="diagnostico_inicial" class="form-label">Diagnóstico Inicial (Observaciones del Técnico)</label>
+            <textarea class="form-control" id="diagnostico_inicial" name="diagnostico_inicial" rows="5">{{ form_data.diagnostico_inicial if form_data.diagnostico_inicial else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="solucion_aplicada" class="form-label">Solución Aplicada</label>
+            <textarea class="form-control" id="solucion_aplicada" name="solucion_aplicada" rows="5">{{ form_data.solucion_aplicada if form_data.solucion_aplicada else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="piezas_reemplazadas" class="form-label">Piezas Reemplazadas (Separadas por comas)</label>
+            <input type="text" class="form-control" id="piezas_reemplazadas" name="piezas_reemplazadas" value="{{ form_data.piezas_reemplazadas if form_data.piezas_reemplazadas else '' }}">
+        </div>
+        <div class="mb-3">
+            <label for="estado_final" class="form-label">Estado Final <span class="text-danger">*</span></label>
+            <select class="form-select" id="estado_final" name="estado_final" required>
+                <option value="">Seleccione...</option>
+                <option value="Reparado" {% if form_data.estado_final == 'Reparado' %}selected{% endif %}>Reparado</option>
+                <option value="Irreparable" {% if form_data.estado_final == 'Irreparable' %}selected{% endif %}>Irreparable</option>
+                <option value="Pendiente" {% if form_data.estado_final == 'Pendiente' %}selected{% endif %}>Pendiente</option>
+                <option value="Entregado" {% if form_data.estado_final == 'Entregado' %}selected{% endif %}>Entregado</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="fecha_entrega" class="form-label">Fecha de Entrega (Opcional, formato: YYYY-MM-DD HH:MM)</label>
+            <input type="datetime-local" class="form-control" id="fecha_entrega" name="fecha_entrega" value="{{ form_data.fecha_entrega if form_data.fecha_entrega else '' }}">
+        </div>
+        <div class="mb-3">
+            <label for="costo_servicio" class="form-label">Costo del Servicio ($)</label>
+            <input type="number" step="0.01" class="form-control" id="costo_servicio" name="costo_servicio" value="{{ form_data.costo_servicio if form_data.costo_servicio else '' }}">
+        </div>
+        <div class="mb-3">
+            <label for="observaciones_adicionales" class="form-label">Observaciones Adicionales</label>
+            <textarea class="form-control" id="observaciones_adicionales" name="observaciones_adicionales" rows="3">{{ form_data.observaciones_adicionales if form_data.observaciones_adicionales else '' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-success">Guardar Diagnóstico y Finalizar</button>
+        {# CORRECCIÓN DE LA LÍNEA QUE CAUSA EL ERROR #}
+        <a href="{{ url_for('diagnostico_equipo', cliente_ci=diagnostico.cliente_ci, diagnostico_id=diagnostico.id) }}" class="btn btn-secondary">Volver (Datos del Equipo)</a>
+    </form>
+{% endblock %}

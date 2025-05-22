@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Informe de Diagnóstico #{{ diagnostico.id }}{% endblock %}
+
+{% block content %}
+    <h2 class="mb-4">Informe de Diagnóstico #{{ diagnostico.id }}</h2>
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Datos del Cliente
+        </div>
+        <div class="card-body">
+            <p><strong>Nombre:</strong> {{ cliente.nombre }}</p>
+            <p><strong>Cédula de Identidad (CI):</strong> {{ cliente.ci }}</p>
+            <p><strong>Teléfono:</strong> {{ cliente.telefono if cliente.telefono else 'N/A' }}</p>
+            <p><strong>Email:</strong> {{ cliente.email if cliente.email else 'N/A' }}</p>
+            <p><strong>Dirección:</strong> {{ cliente.direccion if cliente.direccion else 'N/A' }}</p>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            Datos del Equipo y Problema
+        </div>
+        <div class="card-body">
+            <p><strong>Fecha Recepción:</strong> {{ diagnostico.fecha_recepcion }}</p>
+            <p><strong>Tipo de Equipo:</strong> {{ diagnostico.tipo_equipo }}</p>
+            <p><strong>Marca:</strong> {{ diagnostico.marca if diagnostico.marca else 'N/A' }}</p>
+            <p><strong>Modelo:</strong> {{ diagnostico.modelo if diagnostico.modelo else 'N/A' }}</p>
+            <p><strong>Serial:</strong> {{ diagnostico.serial if diagnostico.serial else 'N/A' }}</p>
+            <p><strong>Accesorios Recibidos:</strong> {{ diagnostico.accesorios_recibidos if diagnostico.accesorios_recibidos else 'N/A' }}</p>
+            <p><strong>Problema Reportado:</strong> {{ diagnostico.problema_reportado }}</p>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            Diagnóstico y Resultado Técnico
+        </div>
+        <div class="card-body">
+            <p><strong>Diagnóstico Inicial:</strong> {{ diagnostico.diagnostico_inicial if diagnostico.diagnostico_inicial else 'N/A' }}</p>
+            <p><strong>Solución Aplicada:</strong> {{ diagnostico.solucion_aplicada if diagnostico.solucion_aplicada else 'N/A' }}</p>
+            <p><strong>Piezas Reemplazadas:</strong> {{ diagnostico.piezas_reemplazadas if diagnostico.piezas_reemplazadas else 'N/A' }}</p>
+            <p><strong>Estado Final:</strong> <span class="badge bg-{% if diagnostico.estado_final == 'Reparado' %}success{% elif diagnostico.estado_final == 'Irreparable' %}danger{% else %}warning{% endif %}">{{ diagnostico.estado_final }}</span></p>
+            <p><strong>Fecha de Entrega:</strong> {{ diagnostico.fecha_entrega if diagnostico.fecha_entrega else 'N/A' }}</p>
+            <p><strong>Costo del Servicio:</strong> ${{ "%.2f"|format(diagnostico.costo_servicio) if diagnostico.costo_servicio else 'N/A' }}</p>
+            <p><strong>Observaciones Adicionales:</strong> {{ diagnostico.observaciones_adicionales if diagnostico.observaciones_adicionales else 'N/A' }}</p>
+        </div>
+    </div>
+
+    <div class="mt-4 text-center">
+        <a href="{{ url_for('descargar_pdf', diagnostico_id=diagnostico.id) }}" class="btn btn-success btn-lg">Exportar a PDF</a>
+        <a href="{{ url_for('diagnostico_cliente') }}" class="btn btn-secondary btn-lg">Nuevo Diagnóstico</a>
+    </div>
+{% endblock %}
