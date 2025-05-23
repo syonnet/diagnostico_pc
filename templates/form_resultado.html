@@ -1,51 +1,78 @@
 {% extends 'base.html' %}
 
-{% block title %}Paso 3: Diagnóstico y Resultado{% endblock %}
+{% block title %}Diagnóstico y Resultado - ID: {{ diagnostico.id }}{% endblock %}
 
 {% block content %}
-    <h2 class="mb-4">Paso 3: Diagnóstico y Resultado</h2>
-    <p class="lead">Cliente: <strong>{{ cliente_nombre }}</strong> | Equipo: <strong>{{ diagnostico.tipo_equipo }} - {{ diagnostico.marca }} {{ diagnostico.modelo }}</strong></p>
-    <p class="text-muted">Problema Reportado: {{ diagnostico.problema_reportado }}</p>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Diagnóstico y Resultado - ID: {{ diagnostico.id }}</h2>
+    <small class="text-muted">Cliente: {{ cliente_nombre }}</small>
+</div>
 
-    <form method="POST" action="{{ url_for('diagnostico_resultado', diagnostico_id=diagnostico.id) }}">
-        <div class="mb-3">
-            <label for="diagnostico_inicial" class="form-label">Diagnóstico Inicial (Observaciones del Técnico)</label>
-            <textarea class="form-control" id="diagnostico_inicial" name="diagnostico_inicial" rows="5">{{ form_data.diagnostico_inicial if form_data.diagnostico_inicial else '' }}</textarea>
-        </div>
-        <div class="mb-3">
-            <label for="solucion_aplicada" class="form-label">Solución Aplicada</label>
-            <textarea class="form-control" id="solucion_aplicada" name="solucion_aplicada" rows="5">{{ form_data.solucion_aplicada if form_data.solucion_aplicada else '' }}</textarea>
-        </div>
-        <div class="mb-3">
-            <label for="piezas_reemplazadas" class="form-label">Piezas Reemplazadas (Separadas por comas)</label>
-            <input type="text" class="form-control" id="piezas_reemplazadas" name="piezas_reemplazadas" value="{{ form_data.piezas_reemplazadas if form_data.piezas_reemplazadas else '' }}">
-        </div>
-        <div class="mb-3">
-            <label for="estado_final" class="form-label">Estado Final <span class="text-danger">*</span></label>
-            <select class="form-select" id="estado_final" name="estado_final" required>
-                <option value="">Seleccione...</option>
-                <option value="Reparado" {% if form_data.estado_final == 'Reparado' %}selected{% endif %}>Reparado</option>
-                <option value="Irreparable" {% if form_data.estado_final == 'Irreparable' %}selected{% endif %}>Irreparable</option>
-                <option value="Pendiente" {% if form_data.estado_final == 'Pendiente' %}selected{% endif %}>Pendiente</option>
-                <option value="Entregado" {% if form_data.estado_final == 'Entregado' %}selected{% endif %}>Entregado</option>
-            </select>
-        </div>
-        <div class="mb-3">
-            <label for="fecha_entrega" class="form-label">Fecha de Entrega (Opcional, formato:YYYY-MM-DD HH:MM)</label>
-            <input type="datetime-local" class="form-control" id="fecha_entrega" name="fecha_entrega" value="{{ form_data.fecha_entrega if form_data.fecha_entrega else '' }}">
-        </div>
-        <div class="mb-3">
-            <label for="costo_servicio" class="form-label">Costo del Servicio ($)</label>
-            <input type="number" step="0.01" class="form-control" id="costo_servicio" name="costo_servicio" value="{{ form_data.costo_servicio if form_data.costo_servicio else '' }}">
-        </div>
-        <div class="mb-3">
-            <label for="observaciones_adicionales" class="form-label">Observaciones Adicionales</label>
-            <textarea class="form-control" id="observaciones_adicionales" name="observaciones_adicionales" rows="3">{{ form_data.observaciones_adicionales if form_data.observaciones_adicionales else '' }}</textarea>
-        </div>
-        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-            <button type="submit" class="btn btn-success btn-lg">Guardar Diagnóstico y Finalizar</button>
-            <a href="{{ url_for('diagnostico_equipo', cliente_ci=diagnostico.cliente_ci, diagnostico_id=diagnostico.id) }}" class="btn btn-secondary btn-lg">Volver (Datos del Equipo)</a>
-            <a href="{{ url_for('index') }}" class="btn btn-danger btn-lg">Cancelar y Volver al Inicio</a> {# Nuevo botón de cancelar #}
-        </div>
-    </form>
+{% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}
+    <div class="alert alert-warning" role="alert">
+        Este diagnóstico está en un estado finalizado. Solo los administradores pueden realizar modificaciones.
+    </div>
+{% endif %}
+
+<form method="POST">
+    <div class="mb-3">
+        <label for="diagnostico_inicial" class="form-label">Diagnóstico Inicial del Técnico</label>
+        <textarea class="form-control" id="diagnostico_inicial" name="diagnostico_inicial" rows="5"
+            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>{{ (diagnostico.diagnostico_inicial if diagnostico and diagnostico.diagnostico_inicial is not none else form_data.diagnostico_inicial if form_data and form_data.diagnostico_inicial is not none else '') }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="solucion_aplicada" class="form-label">Solución Aplicada</label>
+        <textarea class="form-control" id="solucion_aplicada" name="solucion_aplicada" rows="5"
+            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>{{ (diagnostico.solucion_aplicada if diagnostico and diagnostico.solucion_aplicada is not none else form_data.solucion_aplicada if form_data and form_data.solucion_aplicada is not none else '') }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="piezas_reemplazadas" class="form-label">Piezas Reemplazadas (si aplica)</label>
+        <textarea class="form-control" id="piezas_reemplazadas" name="piezas_reemplazadas" rows="3"
+            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>{{ (diagnostico.piezas_reemplazadas if diagnostico and diagnostico.piezas_reemplazadas is not none else form_data.piezas_reemplazadas if form_data and form_data.piezas_reemplazadas is not none else '') }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="estado_final" class="form-label">Estado Final <span class="text-danger">*</span></label>
+        <select class="form-select" id="estado_final" name="estado_final" required
+            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}disabled{% endif %}>
+            <option value="Pendiente" {% if (diagnostico and diagnostico.estado_final == 'Pendiente') or (form_data.estado_final == 'Pendiente') %}selected{% endif %}>Pendiente</option>
+            <option value="En Revisión" {% if (diagnostico and diagnostico.estado_final == 'En Revisión') or (form_data.estado_final == 'En Revisión') %}selected{% endif %}>En Revisión</option>
+            <option value="Reparado" {% if (diagnostico and diagnostico.estado_final == 'Reparado') or (form_data.estado_final == 'Reparado') %}selected{% endif %}>Reparado</option>
+            <option value="Irreparable" {% if (diagnostico and diagnostico.estado_final == 'Irreparable') or (form_data.estado_final == 'Irreparable') %}selected{% endif %}>Irreparable</option>
+            <option value="Entregado" {% if (diagnostico and diagnostico.estado_final == 'Entregado') or (form_data.estado_final == 'Entregado') %}selected{% endif %}>Entregado</option>
+            <option value="Devuelto sin reparar" {% if (diagnostico and diagnostico.estado_final == 'Devuelto sin reparar') or (form_data.estado_final == 'Devuelto sin reparar') %}selected{% endif %}>Devuelto sin reparar</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="fecha_entrega" class="form-label">Fecha de Entrega (Opcional)</label>
+        {# Asegura que el valor sea una cadena vacía si es None #}
+        <input type="date" class="form-control" id="fecha_entrega" name="fecha_entrega"
+            value="{{ (diagnostico.fecha_entrega if diagnostico and diagnostico.fecha_entrega is not none else form_data.fecha_entrega if form_data and form_data.fecha_entrega is not none else '') }}"
+            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>
+    </div>
+
+    <div class="mb-3">
+        <label for="costo_servicio" class="form-label">Costo del Servicio ($)</label>
+        <input type="number" step="0.01" class="form-control" id="costo_servicio" name="costo_servicio"
+            value="{{ (diagnostico.costo_servicio if diagnostico and diagnostico.costo_servicio is not none else form_data.costo_servicio if form_data and form_data.costo_servicio is not none else '') }}"
+            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>
+    </div>
+
+    <div class="mb-3">
+        <label for="observaciones_adicionales" class="form-label">Observaciones Adicionales</label>
+        <textarea class="form-control" id="observaciones_adicionales" name="observaciones_adicionales" rows="3"
+            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>{{ (diagnostico.observaciones_adicionales if diagnostico and diagnostico.observaciones_adicionales is not none else form_data.observaciones_adicionales if form_data and form_data.observaciones_adicionales is not none else '') }}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <button type="submit" class="btn btn-primary btn-lg"
+            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}disabled{% endif %}>
+            Guardar Resultado
+        </button>
+        <a href="{{ url_for('ver_diagnostico', diagnostico_id=diagnostico.id) }}" class="btn btn-secondary btn-lg">Cancelar</a>
+    </div>
+</form>
 {% endblock %}

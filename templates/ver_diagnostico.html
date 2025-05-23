@@ -28,6 +28,8 @@
             <p><strong>Marca:</strong> {{ diagnostico.marca if diagnostico.marca else 'N/A' }}</p>
             <p><strong>Modelo:</strong> {{ diagnostico.modelo if diagnostico.modelo else 'N/A' }}</p>
             <p><strong>Serial:</strong> {{ diagnostico.serial if diagnostico.serial else 'N/A' }}</p>
+            {# NUEVO CAMPO: Componentes #}
+            <p><strong>Especificaciones del Equipo (Componentes):</strong> {{ diagnostico.componentes if diagnostico.componentes else 'N/A' }}</p>
             <p><strong>Accesorios Recibidos:</strong> {{ diagnostico.accesorios_recibidos if diagnostico.accesorios_recibidos else 'N/A' }}</p>
             <p><strong>Problema Reportado:</strong> {{ diagnostico.problema_reportado }}</p>
         </div>

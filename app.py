@@ -1,14 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session, g, abort, send_file
 from database import init_db, get_db
 from pdf_generator import generate_diagnostico_pdf
 import sqlite3
 from datetime import datetime
 import os
 import re
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
+import tempfile # Importar el módulo tempfile
 
 app = Flask(__name__)
-# ¡IMPORTANTE! Cambia esto por una clave secreta fuerte y única para producción
-app.secret_key = 'your_secret_key_here' 
+app.secret_key = 'your_secret_key_here' # ¡IMPORTANTE! Cambia esto por una clave secreta fuerte y única para producción
 app.debug = True
 
 # Inicializar la base de datos al inicio de la aplicación
@@ -17,21 +19,151 @@ with app.app_context():
 
 # Función auxiliar para limpiar el nombre del cliente para el nombre del archivo
 def _limpiar_nombre_archivo(nombre):
-    # Reemplaza caracteres no alfanuméricos (excepto espacios y guiones) con un guion bajo
     nombre_limpio = re.sub(r'[^\w\s-]', '', nombre)
-    # Reemplaza espacios con guiones bajos
     nombre_limpio = re.sub(r'\s+', '_', nombre_limpio)
-    # Elimina guiones bajos duplicados o al inicio/final
     nombre_limpio = re.sub(r'_+', '_', nombre_limpio).strip('_')
-    return nombre_limpio.lower() # Opcional: convertir a minúsculas
+    return nombre_limpio.lower()
 
+# --- Context Processor para el usuario actual ---
+@app.before_request
+def load_logged_in_user():
+    user_id = session.get('user_id')
+    if user_id is None:
+        g.user = None
+    else:
+        db = get_db()
+        g.user = db.execute(
+            'SELECT * FROM users WHERE id = ?', (user_id,)
+        ).fetchone()
+        db.close()
+
+# --- Decorador para rutas protegidas por login ---
+def login_required(view):
+    @wraps(view)
+    def wrapped_view(**kwargs):
+        if g.user is None:
+            flash('Debes iniciar sesión para acceder a esta página.', 'warning')
+            return redirect(url_for('login'))
+        return view(**kwargs)
+    return wrapped_view
+
+# --- Decorador para autorización por rol ---
+def role_required(required_role):
+    def decorator(view):
+        @wraps(view)
+        def wrapped_view(**kwargs):
+            if not g.user:
+                flash('Debes iniciar sesión para acceder a esta página.', 'warning')
+                return redirect(url_for('login'))
+            
+            user_role = g.user['role'].lower() if g.user['role'] else 'user'
+            
+            if user_role != required_role.lower():
+                flash(f'No tienes permiso para acceder a esta funcionalidad. Solo los usuarios con rol "{required_role}" pueden hacerlo.', 'danger')
+                return redirect(url_for('index'))
+            return view(**kwargs)
+        return wrapped_view
+    return decorator
+
+
+# --- Rutas de Autenticación ---
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form['password']
+        role = request.form.get('role', 'user') 
+        
+        # Validación: Solo un admin logueado puede registrar a otro admin
+        if role.lower() == 'admin' and (not g.user or g.user['role'].lower() != 'admin'):
+            flash('No tienes permiso para registrar un usuario con rol de administrador.', 'danger')
+            return render_template('register.html', form_data=request.form)
+
+        if not username or not password:
+            flash('El nombre de usuario y la contraseña son obligatorios.', 'danger')
+            return render_template('register.html', form_data=request.form)
+
+        db = get_db()
+        try:
+            hashed_password = generate_password_hash(password)
+            db.execute(
+                "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                (username, hashed_password, role),
+            )
+            db.commit()
+            flash('Registro exitoso. ¡Ahora puedes iniciar sesión!', 'success')
+            return redirect(url_for('login'))
+        except sqlite3.IntegrityError:
+            flash(f'El nombre de usuario "{username}" ya está registrado.', 'danger')
+        except sqlite3.Error as e:
+            flash(f'Error al registrar usuario: {e}', 'danger')
+        finally:
+            db.close()
+    return render_template('register.html', form_data={})
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form['password']
+
+        db = get_db()
+        user = db.execute(
+            'SELECT * FROM users WHERE username = ?', (username,)
+        ).fetchone()
+        db.close()
+
+        if user is None or not check_password_hash(user['password_hash'], password):
+            flash('Nombre de usuario o contraseña incorrectos.', 'danger')
+        else:
+            session.clear()
+            session['user_id'] = user['id']
+            flash(f'¡Bienvenido, {user["username"]}!', 'success')
+            return redirect(url_for('index'))
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Has cerrado sesión.', 'info')
+    return redirect(url_for('index'))
+
+# --- Rutas de la Aplicación ---
 @app.route('/')
 def index():
-    # Renderiza la página de inicio
     return render_template('index.html') 
 
-# --- RUTA: Listado y Búsqueda de Diagnósticos ---
+# --- RUTA: Panel de Control (Dashboard) ---
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    db = get_db()
+    
+    # Total de clientes
+    total_clientes = db.execute('SELECT COUNT(*) FROM clientes').fetchone()[0]
+    
+    # Total de diagnósticos
+    total_diagnosticos = db.execute('SELECT COUNT(*) FROM diagnosticos').fetchone()[0]
+    
+    # Diagnósticos por estado
+    diagnosticos_por_estado_raw = db.execute('SELECT estado_final, COUNT(*) FROM diagnosticos GROUP BY estado_final').fetchall()
+    diagnosticos_por_estado = {row['estado_final']: row['COUNT(*)'] for row in diagnosticos_por_estado_raw}
+    
+    # Ingresos estimados (suma de costo_servicio para diagnósticos "Reparado" o "Entregado")
+    ingresos_estimados_raw = db.execute("SELECT SUM(costo_servicio) FROM diagnosticos WHERE estado_final IN ('Reparado', 'Entregado')").fetchone()[0]
+    ingresos_estimados = ingresos_estimados_raw if ingresos_estimados_raw is not None else 0.0
+    
+    db.close()
+    
+    return render_template('dashboard.html',
+                           total_clientes=total_clientes,
+                           total_diagnosticos=total_diagnosticos,
+                           diagnosticos_por_estado=diagnosticos_por_estado,
+                           ingresos_estimados=ingresos_estimados)
+
+
 @app.route('/diagnosticos')
+@login_required
 def listar_diagnosticos():
     db = get_db()
     query = """
@@ -47,12 +179,10 @@ def listar_diagnosticos():
     """
     params = []
 
-    # Lógica de búsqueda
     search_query = request.args.get('q', '').strip()
     search_type = request.args.get('type', 'all').strip()
     
     if search_query:
-        # Añadir cláusulas WHERE basadas en el tipo de búsqueda
         if search_type == 'cliente':
             query += " AND (c.nombre LIKE ? OR c.telefono LIKE ? OR c.ci LIKE ?)" 
             params.extend([f'%{search_query}%', f'%{search_query}%', f'%{search_query}%'])
@@ -62,7 +192,7 @@ def listar_diagnosticos():
         elif search_type == 'estado':
             query += " AND d.estado_final LIKE ?"
             params.append(f'%{search_query}%')
-        else: # 'all' o cualquier otro valor, busca en todos los campos relevantes
+        else: # 'all'
             query += """
                 AND (
                     c.nombre LIKE ? OR c.telefono LIKE ? OR c.ci LIKE ? OR 
@@ -76,7 +206,7 @@ def listar_diagnosticos():
                 f'%{search_query}%', f'%{search_query}%'
             ])
     
-    query += " ORDER BY d.fecha_recepcion DESC" # Ordenar por fecha de recepción más reciente
+    query += " ORDER BY d.fecha_recepcion DESC"
 
     diagnosticos = db.execute(query, tuple(params)).fetchall()
     db.close()
@@ -86,8 +216,8 @@ def listar_diagnosticos():
                            search_query=search_query,
                            search_type=search_type)
 
-# --- RUTA: Listado y Búsqueda de Clientes ---
 @app.route('/clientes')
+@login_required
 def listar_clientes():
     db = get_db()
     query = "SELECT * FROM clientes WHERE 1=1"
@@ -110,7 +240,7 @@ def listar_clientes():
             query += " AND (ci LIKE ? OR nombre LIKE ? OR telefono LIKE ? OR email LIKE ? OR direccion LIKE ?)"
             params.extend([f'%{search_query}%', f'%{search_query}%', f'%{search_query}%', f'%{search_query}%', f'%{search_query}%'])
     
-    query += " ORDER BY nombre ASC" # Ordenar por nombre del cliente
+    query += " ORDER BY nombre ASC"
 
     clientes = db.execute(query, tuple(params)).fetchall()
     db.close()
@@ -120,11 +250,8 @@ def listar_clientes():
                            search_query=search_query,
                            search_type=search_type)
 
-
-# --- Rutas de Formularios y Acciones ---
-
-# Ruta para generar y descargar el PDF
 @app.route('/diagnostico/pdf/<int:diagnostico_id>')
+@login_required
 def descargar_pdf(diagnostico_id):
     db = get_db()
     diagnostico = db.execute('SELECT * FROM diagnosticos WHERE id = ?', (diagnostico_id,)).fetchone()
@@ -132,7 +259,7 @@ def descargar_pdf(diagnostico_id):
     if not diagnostico:
         db.close()
         flash('Diagnóstico no encontrado para generar PDF.', 'danger')
-        return redirect(url_for('listar_diagnosticos')) # Redirige a la lista si no se encuentra
+        return redirect(url_for('listar_diagnosticos'))
 
     cliente = db.execute('SELECT * FROM clientes WHERE ci = ?', (diagnostico['cliente_ci'],)).fetchone()
     db.close()
@@ -143,25 +270,44 @@ def descargar_pdf(diagnostico_id):
 
     cliente_nombre_limpio = _limpiar_nombre_archivo(cliente['nombre'])
     pdf_filename = f"informe_diagnostico_{cliente_nombre_limpio}_{diagnostico_id}.pdf"
-    # Asegúrate de que output_path apunta a un lugar donde la app tiene permisos de escritura
-    # app.root_path es la ruta donde se encuentra el archivo app.py
-    output_path = os.path.join(app.root_path, pdf_filename)
+
+    # Usar tempfile para crear un archivo temporal de forma segura
+    # delete=False porque lo eliminaremos manualmente después de enviar
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_pdf_file:
+        output_path = temp_pdf_file.name # Obtener la ruta completa del archivo temporal
 
     try:
+        # Genera el PDF en la ruta del archivo temporal
         generate_diagnostico_pdf(dict(diagnostico), dict(cliente), output_path)
+        
         # Envía el archivo como adjunto para que se descargue
-        return send_file(output_path, as_attachment=True, download_name=pdf_filename)
+        response = send_file(output_path, as_attachment=True, download_name=pdf_filename)
+        
+        # Después de enviar el archivo, programar su eliminación
+        @response.call_on_close
+        def remove_file():
+            try:
+                os.remove(output_path)
+                print(f"Archivo temporal eliminado: {output_path}")
+            except Exception as e:
+                print(f"Error al eliminar el archivo temporal {output_path}: {e}")
+        
+        return response
     except Exception as e:
         flash(f'Error al generar el PDF: {e}', 'danger')
-        # Importante: para propósitos de depuración, puedes imprimir el traceback
         import traceback
         traceback.print_exc()
+        # Asegurarse de que el archivo temporal se elimine incluso si ocurre un error
+        if os.path.exists(output_path):
+            try:
+                os.remove(output_path)
+                print(f"Archivo temporal de error eliminado: {output_path}")
+            except Exception as cleanup_e:
+                print(f"Error al limpiar el archivo temporal de error {output_path}: {cleanup_e}")
         return redirect(url_for('ver_diagnostico', diagnostico_id=diagnostico_id))
         
-# --- RUTA: Iniciar Nuevo Diagnóstico (Paso 1: Cliente) ---
-# Esta ruta maneja la entrada de CI para un nuevo diagnóstico,
-# y crea el cliente si no existe, o lo selecciona si ya existe.
 @app.route('/diagnostico/iniciar', methods=['GET', 'POST'])
+@login_required
 def iniciar_diagnostico():
     if request.method == 'POST':
         ci = request.form['ci'].strip()
@@ -170,9 +316,10 @@ def iniciar_diagnostico():
         email = request.form.get('email')
         direccion = request.form.get('direccion')
         
-        if not ci:
-            flash('La Cédula de Identidad es obligatoria para iniciar un diagnóstico.', 'danger')
-            return render_template('form_cliente_inicio.html', form_data=request.form)
+        # Validar longitud de la CI
+        if not ci or len(ci) != 10:
+            flash('La Cédula de Identidad debe tener exactamente 10 caracteres.', 'danger')
+            return render_template('form_cliente_inicio.html', form_data=request.form, ci_provided=ci, nombre_provided=nombre, telefono_provided=telefono, email_provided=email, direccion_provided=direccion)
 
         db = get_db()
         existing_client = db.execute('SELECT * FROM clientes WHERE ci = ?', (ci,)).fetchone()
@@ -185,9 +332,8 @@ def iniciar_diagnostico():
             # Si el cliente no existe, debemos pedir el nombre para crearlo
             if not nombre:
                 db.close()
-                flash(f'La Cédula de Identidad {ci} no está registrada. Por favor, ingrese el nombre del nuevo cliente.', 'danger')
-                # Pasa todos los datos del formulario para que no se pierdan
-                return render_template('form_cliente_inicio.html', form_data=request.form, ci_provided=ci)
+                flash(f'La Cédula de Identidad {ci} no está registrada. Por favor, ingrese el nombre del nuevo cliente y los demás datos.', 'danger')
+                return render_template('form_cliente_inicio.html', form_data=request.form, ci_provided=ci, nombre_provided=nombre, telefono_provided=telefono, email_provided=email, direccion_provided=direccion)
             
             try:
                 cursor = db.cursor()
@@ -199,27 +345,23 @@ def iniciar_diagnostico():
                 db.close()
                 flash(f'Nuevo cliente {nombre} (CI: {ci}) registrado y seleccionado para el diagnóstico.', 'success')
                 return redirect(url_for('diagnostico_equipo', cliente_ci=ci))
-            except sqlite3.IntegrityError as e: # Captura específica de error de unicidad
+            except sqlite3.IntegrityError as e:
                 db.close()
-                # Verifica si el error es por la restricción de CI duplicada
                 if "UNIQUE constraint failed: clientes.ci" in str(e):
                     flash(f'Error: La Cédula de Identidad {ci} ya está registrada. Por favor, use una CI diferente o seleccione el cliente existente.', 'danger')
                 else:
                     flash(f'Error de base de datos al registrar el nuevo cliente: {e}', 'danger')
-                # Pasa todos los datos del formulario para que no se pierdan al regresar
-                return render_template('form_cliente_inicio.html', form_data=request.form, ci_provided=ci)
-            except sqlite3.Error as e: # Captura otros errores de sqlite
+                return render_template('form_cliente_inicio.html', form_data=request.form, ci_provided=ci, nombre_provided=nombre, telefono_provided=telefono, email_provided=email, direccion_provided=direccion)
+            except sqlite3.Error as e:
                 db.close()
                 flash(f'Error al registrar el nuevo cliente: {e}', 'danger')
-                # Pasa todos los datos del formulario para que no se pierdan al regresar
-                return render_template('form_cliente_inicio.html', form_data=request.form, ci_provided=ci)
+                return render_template('form_cliente_inicio.html', form_data=request.form, ci_provided=ci, nombre_provided=nombre, telefono_provided=telefono, email_provided=email, direccion_provided=direccion)
 
-    # Si es GET, simplemente muestra el formulario para ingresar la CI
     return render_template('form_cliente_inicio.html', form_data={})
 
-# --- RUTA: Edición de Cliente Existente ---
-# Esta ruta es solo para editar los datos de un cliente ya existente, no para iniciar un diagnóstico.
 @app.route('/cliente/editar/<string:cliente_ci>', methods=['GET', 'POST'])
+@login_required
+@role_required('admin')
 def editar_cliente(cliente_ci):
     db = get_db()
     cliente = db.execute('SELECT * FROM clientes WHERE ci = ?', (cliente_ci,)).fetchone()
@@ -230,7 +372,7 @@ def editar_cliente(cliente_ci):
         return redirect(url_for('listar_clientes'))
     
     if request.method == 'POST':
-        ci_form = request.form['ci'].strip() # CI del formulario
+        ci_form = request.form['ci'].strip()
         nombre = request.form['nombre']
         telefono = request.form.get('telefono')
         email = request.form.get('email')
@@ -240,13 +382,21 @@ def editar_cliente(cliente_ci):
             flash('La Cédula de Identidad y el nombre del cliente son obligatorios.', 'danger')
             form_data = request.form
             db.close()
-            return render_template('form_cliente.html', # Usamos form_cliente.html para la edición
+            return render_template('form_cliente.html', 
+                                   cliente=cliente, 
+                                   form_data=form_data)
+        
+        # Validar longitud de la CI en edición
+        if len(ci_form) != 10:
+            flash('La Cédula de Identidad debe tener exactamente 10 caracteres.', 'danger')
+            form_data = request.form
+            db.close()
+            return render_template('form_cliente.html', 
                                    cliente=cliente, 
                                    form_data=form_data)
 
         try:
             cursor = db.cursor()
-            # Si la CI fue cambiada, verificar que la nueva CI no exista ya
             if ci_form != cliente_ci:
                 existing_client = db.execute('SELECT ci FROM clientes WHERE ci = ?', (ci_form,)).fetchone()
                 if existing_client:
@@ -255,7 +405,6 @@ def editar_cliente(cliente_ci):
                     return render_template('form_cliente.html', 
                                            cliente=cliente, 
                                            form_data=request.form)
-                # Si la CI cambia, también debemos actualizarla en los diagnósticos asociados
                 cursor.execute("UPDATE diagnosticos SET cliente_ci = ? WHERE cliente_ci = ?", (ci_form, cliente_ci))
 
             cursor.execute("""
@@ -275,17 +424,15 @@ def editar_cliente(cliente_ci):
                                    cliente=cliente, 
                                    form_data=form_data)
 
-    # Si es GET, rellenar el formulario con los datos existentes
     form_data = dict(cliente) if cliente else {}
     db.close()
     return render_template('form_cliente.html', 
                            cliente=cliente, 
                            form_data=form_data)
 
-
-# Paso 2: Formulario de Equipo (Creación y Edición)
 @app.route('/diagnostico/equipo/<string:cliente_ci>', methods=['GET', 'POST'])
 @app.route('/diagnostico/equipo/<string:cliente_ci>/<int:diagnostico_id>', methods=['GET', 'POST'])
+@login_required
 def diagnostico_equipo(cliente_ci, diagnostico_id=None):
     db = get_db()
     cliente = db.execute('SELECT * FROM clientes WHERE ci = ?', (cliente_ci,)).fetchone()
@@ -308,11 +455,13 @@ def diagnostico_equipo(cliente_ci, diagnostico_id=None):
         marca = request.form.get('marca')
         modelo = request.form.get('modelo')
         serial = request.form.get('serial')
+        componentes = request.form.get('componentes') # NUEVO CAMPO
         accesorios_recibidos = request.form.get('accesorios_recibidos')
         problema_reportado = request.form['problema_reportado']
+        fecha_recepcion = request.form.get('fecha_recepcion') # Asegúrate de obtenerlo del formulario
 
-        if not tipo_equipo or not problema_reportado:
-            flash('Tipo de equipo y problema reportado son obligatorios.', 'danger')
+        if not tipo_equipo or not problema_reportado or not fecha_recepcion: # Validar fecha_recepcion
+            flash('Tipo de equipo, problema reportado y fecha de recepción son obligatorios.', 'danger')
             form_data = request.form
             db.close()
             return render_template('form_equipo.html', 
@@ -326,11 +475,13 @@ def diagnostico_equipo(cliente_ci, diagnostico_id=None):
                 cursor.execute("""
                     UPDATE diagnosticos SET
                         tipo_equipo = ?, marca = ?, modelo = ?, serial = ?,
-                        accesorios_recibidos = ?, problema_reportado = ?
+                        componentes = ?, -- NUEVO CAMPO
+                        accesorios_recibidos = ?, problema_reportado = ?, fecha_recepcion = ?
                     WHERE id = ? AND cliente_ci = ? 
                 """, (
                     tipo_equipo, marca, modelo, serial,
-                    accesorios_recibidos, problema_reportado,
+                    componentes, # NUEVO CAMPO
+                    accesorios_recibidos, problema_reportado, fecha_recepcion,
                     diagnostico_id, cliente_ci
                 ))
                 db.commit()
@@ -338,15 +489,16 @@ def diagnostico_equipo(cliente_ci, diagnostico_id=None):
                 flash('Datos del equipo actualizados exitosamente!', 'success')
                 return redirect(url_for('ver_diagnostico', diagnostico_id=diagnostico_id))
             else: 
-                fecha_recepcion = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 cursor.execute("""
                     INSERT INTO diagnosticos (
                         cliente_ci, fecha_recepcion, tipo_equipo, marca, modelo, serial,
+                        componentes, -- NUEVO CAMPO
                         accesorios_recibidos, problema_reportado, estado_final
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     cliente_ci, fecha_recepcion, tipo_equipo, marca, modelo, serial,
+                    componentes, # NUEVO CAMPO
                     accesorios_recibidos, problema_reportado, 'Pendiente'
                 ))
                 db.commit()
@@ -364,15 +516,24 @@ def diagnostico_equipo(cliente_ci, diagnostico_id=None):
                                    form_data=form_data)
 
     form_data = dict(diagnostico) if diagnostico else {}
+    # Asegurarse de que 'componentes' esté en form_data para la precarga
+    if 'componentes' not in form_data:
+        form_data['componentes'] = diagnostico['componentes'] if diagnostico else ''
+
+    if not diagnostico_id:
+        if 'fecha_recepcion' not in form_data:
+            form_data['fecha_recepcion'] = datetime.now().strftime('%Y-%m-%d')
+    elif diagnostico and diagnostico['fecha_recepcion']:
+        form_data['fecha_recepcion'] = diagnostico['fecha_recepcion'].split(' ')[0]
+
     db.close()
     return render_template('form_equipo.html', 
                            cliente=cliente, 
                            diagnostico=diagnostico,
                            form_data=form_data)
 
-
-# Paso 3: Formulario de Diagnóstico y Resultado (Existente)
 @app.route('/diagnostico/resultado/<int:diagnostico_id>', methods=['GET', 'POST'])
+@login_required
 def diagnostico_resultado(diagnostico_id):
     db = get_db()
     diagnostico = db.execute('SELECT * FROM diagnosticos WHERE id = ?', (diagnostico_id,)).fetchone()
@@ -383,12 +544,15 @@ def diagnostico_resultado(diagnostico_id):
         return redirect(url_for('listar_diagnosticos'))
 
     cliente = db.execute('SELECT nombre FROM clientes WHERE ci = ?', (diagnostico['cliente_ci'],)).fetchone()
-    db.close()
-
-    if not cliente:
-        flash('Cliente asociado no encontrado.', 'danger')
-        return redirect(url_for('listar_diagnosticos'))
-
+    
+    estados_finalizados = ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar']
+    
+    if diagnostico['estado_final'] in estados_finalizados and request.method == 'POST':
+        if not g.user or g.user['role'].lower() != 'admin':
+            db.close()
+            flash('No tienes permiso para modificar un diagnóstico finalizado. Solo los administradores pueden hacerlo.', 'danger')
+            return redirect(url_for('ver_diagnostico', diagnostico_id=diagnostico_id))
+    
     if request.method == 'POST':
         diagnostico_inicial = request.form.get('diagnostico_inicial')
         solucion_aplicada = request.form.get('solucion_aplicada')
@@ -400,6 +564,7 @@ def diagnostico_resultado(diagnostico_id):
 
         if not estado_final:
             flash('El estado final es obligatorio.', 'danger')
+            db.close()
             return render_template('form_resultado.html', diagnostico=diagnostico, cliente_nombre=cliente['nombre'], form_data=request.form)
 
         try:
@@ -427,14 +592,15 @@ def diagnostico_resultado(diagnostico_id):
             return redirect(url_for('ver_diagnostico', diagnostico_id=diagnostico_id))
         except sqlite3.Error as e:
             flash(f'Error al actualizar el diagnóstico: {e}', 'danger')
+            db.close()
             return render_template('form_resultado.html', diagnostico=diagnostico, cliente_nombre=cliente['nombre'], form_data=request.form)
 
     form_data = dict(diagnostico) if diagnostico else {}
+    db.close()
     return render_template('form_resultado.html', diagnostico=diagnostico, cliente_nombre=cliente['nombre'], form_data=form_data)
 
-
-# Ruta para ver un diagnóstico completo (Existente)
 @app.route('/diagnostico/ver/<int:diagnostico_id>')
+@login_required
 def ver_diagnostico(diagnostico_id):
     db = get_db()
     diagnostico = db.execute('SELECT * FROM diagnosticos WHERE id = ?', (diagnostico_id,)).fetchone()
@@ -452,6 +618,165 @@ def ver_diagnostico(diagnostico_id):
         return redirect(url_for('listar_diagnosticos'))
 
     return render_template('ver_diagnostico.html', diagnostico=diagnostico, cliente=cliente)
+
+@app.route('/diagnostico/eliminar/<int:diagnostico_id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def eliminar_diagnostico(diagnostico_id):
+    db = get_db()
+    try:
+        diagnostico = db.execute('SELECT id FROM diagnosticos WHERE id = ?', (diagnostico_id,)).fetchone()
+        if not diagnostico:
+            flash('Diagnóstico no encontrado para eliminar.', 'danger')
+            return redirect(url_for('listar_diagnosticos'))
+
+        cursor = db.cursor()
+        cursor.execute("DELETE FROM diagnosticos WHERE id = ?", (diagnostico_id,))
+        db.commit()
+        flash('Diagnóstico eliminado exitosamente.', 'success')
+    except sqlite3.Error as e:
+        flash(f'Error al eliminar el diagnóstico: {e}', 'danger')
+    finally:
+        db.close()
+    return redirect(url_for('listar_diagnosticos'))
+
+@app.route('/cliente/eliminar/<string:cliente_ci>', methods=['POST'])
+@login_required
+@role_required('admin')
+def eliminar_cliente(cliente_ci):
+    db = get_db()
+    try:
+        cliente = db.execute('SELECT ci, nombre FROM clientes WHERE ci = ?', (cliente_ci,)).fetchone()
+        if not cliente:
+            flash('Cliente no encontrado para eliminar.', 'danger')
+            return redirect(url_for('listar_clientes'))
+        
+        diagnosticos_asociados = db.execute('SELECT COUNT(*) FROM diagnosticos WHERE cliente_ci = ?', (cliente_ci,)).fetchone()[0]
+        
+        if diagnosticos_asociados > 0:
+            flash(f'No se puede eliminar el cliente "{cliente["nombre"]}" (CI: {cliente_ci}) porque tiene {diagnosticos_asociados} diagnóstico(s) asociado(s). Elimine los diagnósticos primero.', 'danger')
+        else:
+            cursor = db.cursor()
+            cursor.execute("DELETE FROM clientes WHERE ci = ?", (cliente_ci,))
+            db.commit()
+            flash(f'Cliente "{cliente["nombre"]}" (CI: {cliente_ci}) eliminado exitosamente.', 'success')
+    except sqlite3.Error as e:
+        flash(f'Error al eliminar el cliente: {e}', 'danger')
+    finally:
+        db.close()
+    return redirect(url_for('listar_clientes'))
+
+# --- Rutas de Gestión de Usuarios ---
+
+@app.route('/users')
+@login_required
+@role_required('admin')
+def listar_usuarios():
+    db = get_db()
+    users = db.execute('SELECT id, username, role FROM users ORDER BY username ASC').fetchall()
+    db.close()
+    return render_template('listar_usuarios.html', users=users)
+
+@app.route('/user/add', methods=['GET', 'POST'])
+@login_required
+@role_required('admin')
+def add_user():
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form['password']
+        role = request.form.get('role', 'user')
+
+        if not username or not password:
+            flash('El nombre de usuario y la contraseña son obligatorios.', 'danger')
+            return render_template('form_usuario.html', form_data=request.form)
+
+        db = get_db()
+        try:
+            hashed_password = generate_password_hash(password)
+            db.execute(
+                "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                (username, hashed_password, role),
+            )
+            db.commit()
+            flash(f'Usuario "{username}" agregado exitosamente.', 'success')
+            return redirect(url_for('listar_usuarios'))
+        except sqlite3.IntegrityError:
+            flash(f'El nombre de usuario "{username}" ya está registrado.', 'danger')
+        except sqlite3.Error as e:
+            flash(f'Error al agregar usuario: {e}', 'danger')
+        finally:
+            db.close()
+    return render_template('form_usuario.html', form_data={})
+
+@app.route('/user/edit/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('admin')
+def edit_user(user_id):
+    db = get_db()
+    user = db.execute('SELECT id, username, role FROM users WHERE id = ?', (user_id,)).fetchone()
+    
+    if not user:
+        db.close()
+        flash('Usuario no encontrado para edición.', 'danger')
+        return redirect(url_for('listar_usuarios'))
+
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form.get('password')
+        role = request.form.get('role', 'user')
+
+        if not username:
+            flash('El nombre de usuario es obligatorio.', 'danger')
+            return render_template('form_usuario.html', user=user, form_data=request.form)
+
+        db = get_db()
+        try:
+            update_query = "UPDATE users SET username = ?, role = ? WHERE id = ?"
+            params = [username, role, user_id]
+
+            if password:
+                hashed_password = generate_password_hash(password)
+                update_query = "UPDATE users SET username = ?, password_hash = ?, role = ? WHERE id = ?"
+                params = [username, hashed_password, role, user_id]
+
+            db.execute(update_query, tuple(params))
+            db.commit()
+            flash(f'Usuario "{username}" actualizado exitosamente.', 'success')
+            return redirect(url_for('listar_usuarios'))
+        except sqlite3.IntegrityError:
+            flash(f'El nombre de usuario "{username}" ya está registrado.', 'danger')
+        except sqlite3.Error as e:
+            flash(f'Error al actualizar usuario: {e}', 'danger')
+        finally:
+            db.close()
+    
+    form_data = dict(user)
+    db.close()
+    return render_template('form_usuario.html', user=user, form_data=form_data)
+
+@app.route('/user/delete/<int:user_id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def delete_user(user_id):
+    db = get_db()
+    try:
+        if g.user and g.user['id'] == user_id:
+            flash('No puedes eliminar tu propia cuenta de administrador.', 'danger')
+            return redirect(url_for('listar_usuarios'))
+
+        user_to_delete = db.execute('SELECT username FROM users WHERE id = ?', (user_id,)).fetchone()
+        if not user_to_delete:
+            flash('Usuario no encontrado para eliminar.', 'danger')
+            return redirect(url_for('listar_usuarios'))
+
+        db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        db.commit()
+        flash(f'Usuario "{user_to_delete["username"]}" eliminado exitosamente.', 'success')
+    except sqlite3.Error as e:
+        flash(f'Error al eliminar usuario: {e}', 'danger')
+    finally:
+        db.close()
+    return redirect(url_for('listar_usuarios'))
 
 if __name__ == '__main__':
     app.run(debug=True)

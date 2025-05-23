@@ -1,7 +1,6 @@
-# database.py
-
 import sqlite3
 import os
+from werkzeug.security import generate_password_hash # Importa para generar el hash de la contraseña
 
 DATABASE = 'database.db'
 
@@ -17,6 +16,7 @@ def init_db():
     # Opcional: Elimina las tablas si ya existen (útil para desarrollo y para aplicar cambios de esquema)
     # cursor.execute("DROP TABLE IF EXISTS diagnosticos;")
     # cursor.execute("DROP TABLE IF EXISTS clientes;")
+    # cursor.execute("DROP TABLE IF EXISTS users;") 
 
     # Crea la tabla de clientes con CI como PRIMARY KEY
     cursor.execute("""
@@ -39,6 +39,7 @@ def init_db():
             marca TEXT,
             modelo TEXT,
             serial TEXT,
+            componentes TEXT, -- Campo de componentes añadido
             accesorios_recibidos TEXT,
             problema_reportado TEXT NOT NULL,
             diagnostico_inicial TEXT,
@@ -52,10 +53,41 @@ def init_db():
         );
     """)
 
+    # Crea la tabla de usuarios para la autenticación
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT DEFAULT 'user' -- 'admin' o 'user'
+        );
+    """)
+
+    # --- Lógica para crear el usuario administrador por defecto ---
+    cursor.execute("SELECT COUNT(*) FROM users")
+    user_count = cursor.fetchone()[0]
+
+    if user_count == 0:
+        # Define las credenciales del admin por defecto
+        # ¡ADVERTENCIA DE SEGURIDAD! Para producción, NO uses contraseñas hardcodeadas.
+        # Usa variables de entorno o un sistema de configuración seguro.
+        default_admin_username = "admin"
+        default_admin_password = "adminpass" 
+        
+        # Genera el hash de la contraseña
+        hashed_password = generate_password_hash(default_admin_password)
+        
+        # Inserta el usuario administrador por defecto
+        cursor.execute(
+            "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+            (default_admin_username, hashed_password, 'admin')
+        )
+        print(f"Usuario administrador por defecto '{default_admin_username}' (contraseña: '{default_admin_password}') creado.")
+    # --- Fin de la lógica del usuario admin por defecto ---
+
     db.commit()
     db.close()
-    print("Base de datos inicializada correctamente con CI como clave primaria.")
+    print("Base de datos inicializada correctamente con tablas clientes, diagnosticos y users.") # Mensaje de confirmación
 
 if __name__ == '__main__':
-    # Si ejecutas este archivo directamente, inicializará la base de datos
     init_db()

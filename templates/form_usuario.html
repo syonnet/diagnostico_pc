@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if user %}Editar Usuario: {{ user.username }}{% else %}Añadir Nuevo Usuario{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>{% if user %}Editar Usuario: {{ user.username }}{% else %}Añadir Nuevo Usuario{% endif %}</h2>
+</div>
+
+<form method="POST">
+    <div class="mb-3">
+        <label for="username" class="form-label">Nombre de Usuario <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="username" name="username" required
+               value="{{ user.username if user else form_data.username if form_data else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="password" class="form-label">Contraseña {% if not user %}<span class="text-danger">*</span>{% else %}(Dejar en blanco para no cambiar){% endif %}</label>
+        <input type="password" class="form-control" id="password" name="password" {% if not user %}required{% endif %}>
+    </div>
+
+    <div class="mb-3">
+        <label for="role" class="form-label">Rol <span class="text-danger">*</span></label>
+        <select class="form-select" id="role" name="role" required>
+            <option value="user" {% if (user and user.role == 'user') or (form_data.role == 'user') %}selected{% endif %}>Usuario</option>
+            {# Solo permitir seleccionar 'admin' si el usuario logueado es admin #}
+            {% if g.user and g.user.role.lower() == 'admin' %}
+            <option value="admin" {% if (user and user.role == 'admin') or (form_data.role == 'admin') %}selected{% endif %}>Administrador</option>
+            {% endif %}
+        </select>
+        {% if not g.user or g.user.role.lower() != 'admin' %}
+        <small class="form-text text-muted">No tienes permiso para asignar el rol de administrador.</small>
+        {% endif %}
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <button type="submit" class="btn btn-primary btn-lg">
+            {% if user %}Actualizar Usuario{% else %}Añadir Usuario{% endif %}
+        </button>
+        <a href="{{ url_for('listar_usuarios') }}" class="btn btn-secondary btn-lg">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

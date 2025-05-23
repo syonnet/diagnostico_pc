@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Usuarios{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Gestión de Usuarios</h2>
+    <div>
+        <a href="{{ url_for('add_user') }}" class="btn btn-success">
+            <i class="bi bi-person-plus"></i> Añadir Nuevo Usuario
+        </a>
+    </div>
+</div>
+
+{% if users %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Nombre de Usuario</th>
+                <th>Rol</th>
+                <th class="text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.username }}</td>
+                <td><span class="badge bg-{% if user.role == 'admin' %}danger{% else %}primary{% endif %}">{{ user.role.capitalize() }}</span></td>
+                <td class="text-center">
+                    <div class="btn-group" role="group" aria-label="Acciones de Usuario">
+                        <a href="{{ url_for('edit_user', user_id=user.id) }}" class="btn btn-sm btn-outline-warning" title="Editar Usuario">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        {# No permitir eliminar la propia cuenta o si es el único admin #}
+                        {% if g.user.id != user.id %}
+                        <button type="button" class="btn btn-sm btn-outline-danger" title="Eliminar Usuario" data-bs-toggle="modal" data-bs-target="#confirmDeleteUserModal{{ user.id }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            <div class="modal fade" id="confirmDeleteUserModal{{ user.id }}" tabindex="-1" aria-labelledby="confirmDeleteUserModalLabel{{ user.id }}" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="confirmDeleteUserModalLabel{{ user.id }}">Confirmar Eliminación de Usuario</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            ¿Estás seguro de que quieres eliminar al usuario <strong>{{ user.username }}</strong> (ID: {{ user.id }})? Esta acción no se puede deshacer.
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                                <button type="submit" class="btn btn-danger">Eliminar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info" role="alert">
+    No se encontraron usuarios.
+</div>
+{% endif %}
+{% endblock %}
