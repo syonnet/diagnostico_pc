@@ -5,66 +5,194 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar Nuevo Diagnóstico - Cliente</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { padding-top: 20px; }
-        .container { max-width: 800px; }
+        body { 
+            padding-top: 20px; 
+            background-color: #f8f9fa;
+        }
+        .container { 
+            max-width: 800px; 
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        .form-label {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+        .input-group-text {
+            background-color: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-right: none;
+        }
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background-color: #3498db;
+            border-color: #3498db;
+        }
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background-color: #95a5a6;
+            border-color: #95a5a6;
+        }
+        .btn-secondary:hover {
+            background-color: #7f8c8d;
+            border-color: #7f8c8d;
+            transform: translateY(-2px);
+        }
+        .form-text {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+        .required-field {
+            color: #e74c3c;
+            margin-left: 4px;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        #newClientFields {
+            transition: all 0.3s ease;
+        }
+        .alert {
+            border-radius: 8px;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .invalid-feedback {
+            display: none;
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.875rem;
+            color: #dc3545;
+        }
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            padding-right: calc(1.5em + 0.75rem);
+            background-repeat: no-repeat;
+            background-position: right calc(0.375em + 0.1875rem) center;
+            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        }
+        .form-control.is-valid {
+            border-color: #198754;
+            padding-right: calc(1.5em + 0.75rem);
+            background-repeat: no-repeat;
+            background-position: right calc(0.375em + 0.1875rem) center;
+            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        }
+        .btn:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
         .d-none { display: none !important; }
         .d-block { display: block !important; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2 class="mb-4">Iniciar Nuevo Diagnóstico: Datos del Cliente</h2>
-        <p class="lead">Ingrese la Cédula de Identidad del cliente. Si no existe, podrá registrarlo con sus datos básicos.</p>
+        <h2 class="mb-4 text-primary">Iniciar Nuevo Diagnóstico: Datos del Cliente</h2>
+        <p class="lead mb-4">Ingrese la Cédula de Identidad del cliente. Si no existe, podrá registrarlo con sus datos básicos.</p>
         
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
                     <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <form method="POST" action="{{ url_for('iniciar_diagnostico') }}">
-            <div class="mb-3">
-                <label for="ci" class="form-label">Cédula de Identidad (CI) <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="ci" name="ci" required
-                       value="{{ form_data.ci if form_data.ci else (ci_provided if ci_provided else '') }}">
+        <form method="POST" action="{{ url_for('iniciar_diagnostico') }}" id="clienteForm">
+            <div class="mb-4">
+                <label for="ci" class="form-label">Cédula de Identidad (CI)<span class="required-field">*</span></label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-id-card"></i></span>
+                    <input type="text" class="form-control" id="ci" name="ci" required
+                           value="{{ form_data.ci if form_data.ci else (ci_provided if ci_provided else '') }}"
+                           pattern="[0-9]{10}" maxlength="10">
+                </div>
+                <div class="form-text">Ingrese solo números (10 dígitos)</div>
             </div>
 
-            {# y se harán requeridos por JS si la CI es nueva y el nombre está vacío. #}
-            <div id="newClientFields" style="display: none;">
-                <div class="mb-3">
-                    <label for="nombre" class="form-label">Nombre Completo del Cliente <span class="text-danger" id="nombreRequiredIndicator" style="display:none;">*</span></label>
-                    <input type="text" class="form-control" id="nombre" name="nombre"
-                           value="{{ form_data.nombre if form_data.nombre else '' }}">
-                </div>
-                <div class="mb-3">
-                    <label for="telefono" class="form-label">Teléfono</label>
-                    <input type="tel" class="form-control" id="telefono" name="telefono"
-                           value="{{ form_data.telefono if form_data.telefono else '' }}">
-                </div>
-                <div class="mb-3">
-                    <label for="email" class="form-label">Correo Electrónico</label>
-                    <input type="email" class="form-control" id="email" name="email"
-                           value="{{ form_data.email if form_data.email else '' }}">
-                </div>
-                <div class="mb-3">
-                    <label for="direccion" class="form-label">Dirección</label>
-                    <input type="text" class="form-control" id="direccion" name="direccion"
-                           value="{{ form_data.direccion if form_data.direccion else '' }}">
+            <div id="newClientFields" class="fade-in" style="display: none;">
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <label for="nombre" class="form-label">Nombre Completo del Cliente<span class="required-field" id="nombreRequiredIndicator">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                            <input type="text" class="form-control" id="nombre" name="nombre"
+                                   value="{{ form_data.nombre if form_data.nombre else '' }}"
+                                   pattern="[A-Za-záéíóúÁÉÍÓÚñÑ\s]{2,50}">
+                        </div>
+                        <div class="form-text">Ingrese nombres y apellidos (2-50 caracteres)</div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <label for="telefono" class="form-label">Teléfono</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                            <input type="tel" class="form-control" id="telefono" name="telefono"
+                                   value="{{ form_data.telefono if form_data.telefono else '' }}"
+                                   pattern="[0-9]{10}" maxlength="10">
+                        </div>
+                        <div class="form-text">Formato: 10 dígitos (ej. 0991234567)</div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <label for="email" class="form-label">Correo Electrónico</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                            <input type="email" class="form-control" id="email" name="email"
+                                   value="{{ form_data.email if form_data.email else '' }}">
+                        </div>
+                        <div class="form-text">ejemplo@dominio.com</div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <label for="direccion" class="form-label">Dirección</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-home"></i></span>
+                            <input type="text" class="form-control" id="direccion" name="direccion"
+                                   value="{{ form_data.direccion if form_data.direccion else '' }}">
+                        </div>
+                        <div class="form-text">Ingrese la dirección completa</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <div class="d-grid gap-3 d-md-flex justify-content-md-end mt-5">
                 <button type="submit" class="btn btn-primary btn-lg">
-                    Continuar con Diagnóstico
+                    <i class="fas fa-arrow-right me-2"></i>Continuar con Diagnóstico
                 </button>
                 <a href="{{ url_for('index') }}" class="btn btn-secondary btn-lg">
-                    Volver al Inicio
+                    <i class="fas fa-times me-2"></i>Cancelar
                 </a>
             </div>
         </form>
@@ -76,35 +204,59 @@
             const ciInput = document.getElementById('ci');
             const newClientFields = document.getElementById('newClientFields');
             const nombreInput = document.getElementById('nombre');
-            const nombreRequiredIndicator = document.getElementById('nombreRequiredIndicator');
+            const telefonoInput = document.getElementById('telefono');
+            const emailInput = document.getElementById('email');
 
-            function toggleNewClientFields() {
-                if (ciInput.value.trim() !== '') {
+            // Formateo automático de CI
+            ciInput.addEventListener('input', function(e) {
+                this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+                validateCI();
+            });
+
+            // Formateo automático de teléfono
+            telefonoInput.addEventListener('input', function(e) {
+                this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+            });
+
+            function validateCI() {
+                const ciValue = ciInput.value.trim();
+                const isValidLength = ciValue.length >= 10 && ciValue.length <= 10;
+                const submitButton = document.querySelector('button[type="submit"]');
+                
+                if (isValidLength) {
+                    ciInput.classList.remove('is-invalid');
+                    ciInput.classList.add('is-valid');
                     newClientFields.style.display = 'block';
-                    // La lógica de 'required' para nombre se manejará en el backend,
-                    // pero visualmente podemos indicar que es requerido si la CI es nueva.
-                    // Para simplificar, aquí solo mostramos/ocultamos el div.
+                    nombreInput.required = true;
+                    submitButton.disabled = false;
                 } else {
+                    ciInput.classList.remove('is-valid');
+                    ciInput.classList.add('is-invalid');
                     newClientFields.style.display = 'none';
-                    // Limpiar valores cuando se ocultan los campos para evitar enviar datos no deseados
-                    nombreInput.value = '';
-                    document.getElementById('telefono').value = '';
-                    document.getElementById('email').value = '';
-                    document.getElementById('direccion').value = '';
+                    nombreInput.required = false;
+                    submitButton.disabled = true;
+                }
+
+                // Agregar mensaje de error personalizado
+                const errorDiv = document.getElementById('ci-error');
+                if (!errorDiv) {
+                    const div = document.createElement('div');
+                    div.id = 'ci-error';
+                    div.className = 'invalid-feedback';
+                    ciInput.parentNode.appendChild(div);
+                }
+                
+                const errorMessage = document.getElementById('ci-error');
+                if (!isValidLength && ciValue !== '') {
+                    errorMessage.textContent = 'La CI debe tener  10 dígitos';
+                    errorMessage.style.display = 'block';
+                } else {
+                    errorMessage.style.display = 'none';
                 }
             }
 
-            // Llamar al cargar la página por si hay valores precargados (ej. por error de validación)
-            // Mostrar campos si ya hay CI o nombre cargados desde el backend
-            var showNewClientFields = "{{ 'true' if ci_provided or form_data.ci else 'false' }}";
-            if (showNewClientFields) {
-                newClientFields.style.display = 'block';
-            } else {
-                toggleNewClientFields();
-            }
-
-            // Escuchar cambios en el campo CI
-            ciInput.addEventListener('input', toggleNewClientFields);
+            // Validar CI al cargar la página
+            validateCI();
         });
     </script>
 </body>

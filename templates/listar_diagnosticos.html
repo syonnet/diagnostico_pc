@@ -3,6 +3,44 @@
 {% block title %}Diagnósticos - Gestión de Diagnósticos de PC{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+    /* Estilos existentes para la tabla y botones */
+    .modal-content {
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+    .modal-header {
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+        background-color: #e74c3c; /* Color similar al botón de eliminar */
+        color: white;
+        border-bottom: none;
+    }
+    .modal-title {
+        font-weight: bold;
+    }
+    .modal-footer {
+        border-top: none;
+    }
+    .btn-danger {
+        background-color: #e74c3c;
+        border-color: #e74c3c;
+    }
+    .btn-danger:hover {
+        background-color: #c0392b;
+        border-color: #c0392b;
+    }
+    .btn-secondary {
+        background-color: #95a5a6;
+        border-color: #95a5a6;
+    }
+    .btn-secondary:hover {
+        background-color: #7f8c8d;
+        border-color: #7f8c8d;
+    }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Listado de Diagnósticos</h2>
     <div>

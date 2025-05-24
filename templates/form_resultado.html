@@ -3,76 +3,172 @@
 {% block title %}Diagnóstico y Resultado - ID: {{ diagnostico.id }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Diagnóstico y Resultado - ID: {{ diagnostico.id }}</h2>
-    <small class="text-muted">Cliente: {{ cliente_nombre }}</small>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+    .card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        background-color: #ffffff;
+    }
+    .form-label {
+        font-weight: 500;
+        color: #2c3e50;
+    }
+    .form-control, .form-select {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 12px;
+        transition: all 0.3s ease;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+    }
+    .input-group-text {
+        background-color: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-right: none;
+    }
+    .btn {
+        padding: 12px 24px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    .btn-primary {
+        background-color: #3498db;
+        border-color: #3498db;
+    }
+    .btn-primary:hover:not(:disabled) {
+        background-color: #2980b9;
+        border-color: #2980b9;
+        transform: translateY(-2px);
+    }
+    .alert {
+        border-radius: 8px;
+        border: none;
+    }
+    .estado-badge {
+        font-size: 0.9em;
+        padding: 5px 10px;
+        border-radius: 15px;
+        background-color: #e9ecef;
+        color: #2c3e50;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="card p-4 shadow-sm">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-clipboard-check me-2"></i>Diagnóstico y Resultado - ID: {{ diagnostico.id }}</h2>
+            <div class="d-flex align-items-center">
+                <i class="fas fa-user me-2"></i>
+                <span class="text-muted">Cliente: {{ cliente_nombre }}</span>
+            </div>
+        </div>
+
+        {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}
+            <div class="alert alert-warning" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>Este diagnóstico está en un estado finalizado. Solo los administradores pueden realizar modificaciones.
+            </div>
+        {% endif %}
+
+        <form method="POST">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="diagnostico_inicial" class="form-label">
+                        <i class="fas fa-stethoscope me-2"></i>Diagnóstico Inicial del Técnico
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <textarea class="form-control" id="diagnostico_inicial" name="diagnostico_inicial" rows="5" placeholder="Ingrese el diagnóstico inicial del equipo"
+                            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>{{ (diagnostico.diagnostico_inicial if diagnostico and diagnostico.diagnostico_inicial is not none else form_data.diagnostico_inicial if form_data and form_data.diagnostico_inicial is not none else '') }}</textarea>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="solucion_aplicada" class="form-label">
+                        <i class="fas fa-wrench me-2"></i>Solución Aplicada
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-tools"></i></span>
+                        <textarea class="form-control" id="solucion_aplicada" name="solucion_aplicada" rows="5" placeholder="Describa la solución aplicada al equipo"
+                            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>{{ (diagnostico.solucion_aplicada if diagnostico and diagnostico.solucion_aplicada is not none else form_data.solucion_aplicada if form_data and form_data.solucion_aplicada is not none else '') }}</textarea>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="piezas_reemplazadas" class="form-label">
+                        <i class="fas fa-cogs me-2"></i>Piezas Reemplazadas (si aplica)
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-microchip"></i></span>
+                        <textarea class="form-control" id="piezas_reemplazadas" name="piezas_reemplazadas" rows="3" placeholder="Liste las piezas reemplazadas"
+                            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>{{ (diagnostico.piezas_reemplazadas if diagnostico and diagnostico.piezas_reemplazadas is not none else form_data.piezas_reemplazadas if form_data and form_data.piezas_reemplazadas is not none else '') }}</textarea>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="observaciones_adicionales" class="form-label">
+                        <i class="fas fa-comment-alt me-2"></i>Observaciones Adicionales
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-pencil-alt"></i></span>
+                        <textarea class="form-control" id="observaciones_adicionales" name="observaciones_adicionales" rows="3" placeholder="Agregue cualquier observación adicional"
+                            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>{{ (diagnostico.observaciones_adicionales if diagnostico and diagnostico.observaciones_adicionales is not none else form_data.observaciones_adicionales if form_data and form_data.observaciones_adicionales is not none else '') }}</textarea>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="estado_final" class="form-label">
+                        <i class="fas fa-flag-checkered me-2"></i>Estado Final <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select" id="estado_final" name="estado_final" required
+                        {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}disabled{% endif %}>
+                        <option value="Pendiente" {% if (diagnostico and diagnostico.estado_final == 'Pendiente') or (form_data.estado_final == 'Pendiente') %}selected{% endif %}>🕒 Pendiente</option>
+                        <option value="En Revisión" {% if (diagnostico and diagnostico.estado_final == 'En Revisión') or (form_data.estado_final == 'En Revisión') %}selected{% endif %}>🔍 En Revisión</option>
+                        <option value="Reparado" {% if (diagnostico and diagnostico.estado_final == 'Reparado') or (form_data.estado_final == 'Reparado') %}selected{% endif %}>✅ Reparado</option>
+                        <option value="Irreparable" {% if (diagnostico and diagnostico.estado_final == 'Irreparable') or (form_data.estado_final == 'Irreparable') %}selected{% endif %}>❌ Irreparable</option>
+                        <option value="Entregado" {% if (diagnostico and diagnostico.estado_final == 'Entregado') or (form_data.estado_final == 'Entregado') %}selected{% endif %}>📦 Entregado</option>
+                        <option value="Devuelto sin reparar" {% if (diagnostico and diagnostico.estado_final == 'Devuelto sin reparar') or (form_data.estado_final == 'Devuelto sin reparar') %}selected{% endif %}>↩️ Devuelto sin reparar</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="fecha_entrega" class="form-label">
+                        <i class="fas fa-calendar-alt me-2"></i>Fecha de Entrega (Opcional)
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-calendar"></i></span>
+                        <input type="date" class="form-control" id="fecha_entrega" name="fecha_entrega"
+                            value="{{ (diagnostico.fecha_entrega if diagnostico and diagnostico.fecha_entrega is not none else form_data.fecha_entrega if form_data and form_data.fecha_entrega is not none else '') }}"
+                            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="costo_servicio" class="form-label">
+                        <i class="fas fa-dollar-sign me-2"></i>Costo del Servicio ($)
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-money-bill-wave"></i></span>
+                        <input type="number" step="0.01" class="form-control" id="costo_servicio" name="costo_servicio" placeholder="0.00"
+                            value="{{ (diagnostico.costo_servicio if diagnostico and diagnostico.costo_servicio is not none else form_data.costo_servicio if form_data and form_data.costo_servicio is not none else '') }}"
+                            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <button type="submit" class="btn btn-primary btn-lg"
+                    {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}disabled{% endif %}>
+                    <i class="fas fa-save me-2"></i>Guardar Resultado
+                </button>
+                <a href="{{ url_for('ver_diagnostico', diagnostico_id=diagnostico.id) }}" class="btn btn-secondary btn-lg">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
 </div>
-
-{% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}
-    <div class="alert alert-warning" role="alert">
-        Este diagnóstico está en un estado finalizado. Solo los administradores pueden realizar modificaciones.
-    </div>
-{% endif %}
-
-<form method="POST">
-    <div class="mb-3">
-        <label for="diagnostico_inicial" class="form-label">Diagnóstico Inicial del Técnico</label>
-        <textarea class="form-control" id="diagnostico_inicial" name="diagnostico_inicial" rows="5"
-            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>{{ (diagnostico.diagnostico_inicial if diagnostico and diagnostico.diagnostico_inicial is not none else form_data.diagnostico_inicial if form_data and form_data.diagnostico_inicial is not none else '') }}</textarea>
-    </div>
-
-    <div class="mb-3">
-        <label for="solucion_aplicada" class="form-label">Solución Aplicada</label>
-        <textarea class="form-control" id="solucion_aplicada" name="solucion_aplicada" rows="5"
-            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>{{ (diagnostico.solucion_aplicada if diagnostico and diagnostico.solucion_aplicada is not none else form_data.solucion_aplicada if form_data and form_data.solucion_aplicada is not none else '') }}</textarea>
-    </div>
-
-    <div class="mb-3">
-        <label for="piezas_reemplazadas" class="form-label">Piezas Reemplazadas (si aplica)</label>
-        <textarea class="form-control" id="piezas_reemplazadas" name="piezas_reemplazadas" rows="3"
-            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>{{ (diagnostico.piezas_reemplazadas if diagnostico and diagnostico.piezas_reemplazadas is not none else form_data.piezas_reemplazadas if form_data and form_data.piezas_reemplazadas is not none else '') }}</textarea>
-    </div>
-
-    <div class="mb-3">
-        <label for="estado_final" class="form-label">Estado Final <span class="text-danger">*</span></label>
-        <select class="form-select" id="estado_final" name="estado_final" required
-            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}disabled{% endif %}>
-            <option value="Pendiente" {% if (diagnostico and diagnostico.estado_final == 'Pendiente') or (form_data.estado_final == 'Pendiente') %}selected{% endif %}>Pendiente</option>
-            <option value="En Revisión" {% if (diagnostico and diagnostico.estado_final == 'En Revisión') or (form_data.estado_final == 'En Revisión') %}selected{% endif %}>En Revisión</option>
-            <option value="Reparado" {% if (diagnostico and diagnostico.estado_final == 'Reparado') or (form_data.estado_final == 'Reparado') %}selected{% endif %}>Reparado</option>
-            <option value="Irreparable" {% if (diagnostico and diagnostico.estado_final == 'Irreparable') or (form_data.estado_final == 'Irreparable') %}selected{% endif %}>Irreparable</option>
-            <option value="Entregado" {% if (diagnostico and diagnostico.estado_final == 'Entregado') or (form_data.estado_final == 'Entregado') %}selected{% endif %}>Entregado</option>
-            <option value="Devuelto sin reparar" {% if (diagnostico and diagnostico.estado_final == 'Devuelto sin reparar') or (form_data.estado_final == 'Devuelto sin reparar') %}selected{% endif %}>Devuelto sin reparar</option>
-        </select>
-    </div>
-
-    <div class="mb-3">
-        <label for="fecha_entrega" class="form-label">Fecha de Entrega (Opcional)</label>
-        {# Asegura que el valor sea una cadena vacía si es None #}
-        <input type="date" class="form-control" id="fecha_entrega" name="fecha_entrega"
-            value="{{ (diagnostico.fecha_entrega if diagnostico and diagnostico.fecha_entrega is not none else form_data.fecha_entrega if form_data and form_data.fecha_entrega is not none else '') }}"
-            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>
-    </div>
-
-    <div class="mb-3">
-        <label for="costo_servicio" class="form-label">Costo del Servicio ($)</label>
-        <input type="number" step="0.01" class="form-control" id="costo_servicio" name="costo_servicio"
-            value="{{ (diagnostico.costo_servicio if diagnostico and diagnostico.costo_servicio is not none else form_data.costo_servicio if form_data and form_data.costo_servicio is not none else '') }}"
-            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>
-    </div>
-
-    <div class="mb-3">
-        <label for="observaciones_adicionales" class="form-label">Observaciones Adicionales</label>
-        <textarea class="form-control" id="observaciones_adicionales" name="observaciones_adicionales" rows="3"
-            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}readonly{% endif %}>{{ (diagnostico.observaciones_adicionales if diagnostico and diagnostico.observaciones_adicionales is not none else form_data.observaciones_adicionales if form_data and form_data.observaciones_adicionales is not none else '') }}</textarea>
-    </div>
-
-    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-        <button type="submit" class="btn btn-primary btn-lg"
-            {% if g.user and g.user.role.lower() != 'admin' and diagnostico.estado_final in ['Reparado', 'Irreparable', 'Entregado', 'Devuelto sin reparar'] %}disabled{% endif %}>
-            Guardar Resultado
-        </button>
-        <a href="{{ url_for('ver_diagnostico', diagnostico_id=diagnostico.id) }}" class="btn btn-secondary btn-lg">Cancelar</a>
-    </div>
-</form>
 {% endblock %}

@@ -5,27 +5,80 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ 'Editar' if diagnostico else 'Registrar' }} Datos del Equipo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { padding-top: 20px; }
-        .container { max-width: 800px; }
-        /* Estilo para las opciones del acordeón cuando están activas */
+        body { 
+            padding-top: 20px; 
+            background-color: #f8f9fa;
+        }
+        .container { 
+            max-width: 800px; 
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .form-label {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+        .input-group-text {
+            background-color: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-right: none;
+        }
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background-color: #3498db;
+            border-color: #3498db;
+        }
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+            transform: translateY(-2px);
+        }
         .tipo-equipo-option.active {
-            background-color: #007bff !important;
-            border-color: #007bff !important;
+            background-color: #3498db !important;
+            border-color: #3498db !important;
             color: #ffffff !important;
+        }
+        .accordion-button {
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px !important;
+        }
+        .accordion-button:not(.collapsed) {
+            background-color: #e9ecef;
+            color: #2c3e50;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="mb-4 text-center">{{ 'Editar' if diagnostico else 'Registrar' }} Datos del Equipo</h1>
-        <h3 class="mb-4 text-center text-muted">Cliente: {{ cliente.nombre }} (CI: {{ cliente.ci }})</h3>
+        <h1 class="mb-4 text-center"><i class="fas fa-laptop me-2"></i>{{ 'Editar' if diagnostico else 'Registrar' }} Datos del Equipo</h1>
+        <h3 class="mb-4 text-center text-muted"><i class="fas fa-user me-2"></i>Cliente: {{ cliente.nombre }} (CI: {{ cliente.ci }})</h3>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
                     <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
+                        <i class="fas fa-info-circle me-2"></i>{{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
@@ -34,10 +87,9 @@
 
         <div class="card p-4 shadow-sm">
             <form action="{{ url_for('diagnostico_equipo', cliente_ci=cliente.ci, diagnostico_id=diagnostico.id if diagnostico else None) }}" method="POST">
-                <div class="row"> {# Inicia una fila para la distribución en columnas #}
-                    <div class="col-md-6 mb-3"> {# Columna izquierda para Tipo de Equipo #}
-                        <label for="tipo_equipo_hidden" class="form-label">Tipo de Equipo <span class="text-danger">*</span></label>
-                        {# Campo oculto para enviar el valor seleccionado #}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="tipo_equipo_hidden" class="form-label"><i class="fas fa-desktop me-2"></i>Tipo de Equipo <span class="text-danger">*</span></label>
                         <input type="hidden" id="tipo_equipo_hidden" name="tipo_equipo" required
                                value="{{ form_data.tipo_equipo if form_data.tipo_equipo else '' }}">
 
@@ -45,75 +97,92 @@
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="headingOne">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-                                        Seleccionar Tipo de Equipo: <span id="selectedTipoEquipo" class="ms-2 fw-bold text-primary">
-                                            {# Muestra el valor actual o "Ninguno" #}
+                                        <i class="fas fa-chevron-down me-2"></i>Seleccionar Tipo de Equipo: <span id="selectedTipoEquipo" class="ms-2 fw-bold text-primary">
                                             {% if form_data.tipo_equipo %}{{ form_data.tipo_equipo }}{% else %}Ninguno{% endif %}
                                         </span>
                                     </button>
                                 </h2>
                                 <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#accordionTipoEquipo">
                                     <div class="accordion-body d-flex flex-wrap gap-2">
-                                        {# Opciones de tipo de equipo como botones #}
-                                        <button type="button" class="btn btn-outline-primary tipo-equipo-option" data-value="Laptop">Laptop</button>
-                                        <button type="button" class="btn btn-outline-primary tipo-equipo-option" data-value="Desktop">Desktop</button>
-                                        <button type="button" class="btn btn-outline-primary tipo-equipo-option" data-value="Tablet">Tablet</button>
-                                        <button type="button" class="btn btn-outline-primary tipo-equipo-option" data-value="Smartphone">Smartphone</button>
-                                        <button type="button" class="btn btn-outline-primary tipo-equipo-option" data-value="Impresora">Impresora</button>
-                                        <button type="button" class="btn btn-outline-primary tipo-equipo-option" data-value="Monitor">Monitor</button>
-                                        <button type="button" class="btn btn-outline-primary tipo-equipo-option" data-value="Otro">Otro</button>
+                                        <button type="button" class="btn btn-outline-primary tipo-equipo-option" data-value="Laptop"><i class="fas fa-laptop me-2"></i>Laptop</button>
+                                        <button type="button" class="btn btn-outline-primary tipo-equipo-option" data-value="Desktop"><i class="fas fa-desktop me-2"></i>Desktop</button>
+                                        <button type="button" class="btn btn-outline-primary tipo-equipo-option" data-value="Monitor"><i class="fas fa-gamepad me-2"></i>Consola de Video</button>
+                                        <button type="button" class="btn btn-outline-primary tipo-equipo-option" data-value="Otro"><i class="fas fa-microchip me-2"></i>Otro</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6 mb-3"> {# Columna derecha para Marca #}
-                        <label for="marca" class="form-label">Marca</label>
-                        <input type="text" class="form-control" id="marca" name="marca"
-                               value="{{ form_data.marca if form_data.marca else '' }}">
-                    </div>
-                </div>
-
-                <div class="row"> {# Nueva fila para Modelo y Serial #}
-                    <div class="col-md-6 mb-3"> {# Columna izquierda para Modelo #}
-                        <label for="modelo" class="form-label">Modelo</label>
-                        <input type="text" class="form-control" id="modelo" name="modelo"
-                               value="{{ form_data.modelo if form_data.modelo else '' }}">
-                    </div>
-                    <div class="col-md-6 mb-3"> {# Columna derecha para Número de Serie #}
-                        <label for="serial" class="form-label">Número de Serie (Serial)</label>
-                        <input type="text" class="form-control" id="serial" name="serial"
-                               value="{{ form_data.serial if form_data.serial else '' }}">
-                    </div>
-                </div>
-
-                <div class="row"> {# Nueva fila para Fecha de Recepción #}
                     <div class="col-md-6 mb-3">
-                        <label for="fecha_recepcion" class="form-label">Fecha de Recepción <span class="text-danger">*</span></label>
-                        <input type="date" class="form-control" id="fecha_recepcion" name="fecha_recepcion" required
-                               value="{{ form_data.fecha_recepcion if form_data.fecha_recepcion else (diagnostico.fecha_recepcion.split(' ')[0] if diagnostico and diagnostico.fecha_recepcion else '') }}">
+                        <label for="marca" class="form-label"><i class="fas fa-trademark me-2"></i>Marca</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-tag"></i></span>
+                            <input type="text" class="form-control" id="marca" name="marca"
+                                   value="{{ form_data.marca if form_data.marca else '' }}">
+                        </div>
                     </div>
                 </div>
 
-                <div class="mb-3"> {# Nuevo campo para Componentes (ancho completo) #}
-                    <label for="componentes" class="form-label">Especificaciones del Equipo (Componentes: Memoria, Procesador, Disco Duro, etc.)</label>
-                    <textarea class="form-control" id="componentes" name="componentes" rows="4">{{ form_data.componentes if form_data.componentes else '' }}</textarea>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="modelo" class="form-label"><i class="fas fa-info-circle me-2"></i>Modelo</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+                            <input type="text" class="form-control" id="modelo" name="modelo"
+                                   value="{{ form_data.modelo if form_data.modelo else '' }}">
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="serial" class="form-label"><i class="fas fa-fingerprint me-2"></i>Número de Serie (Serial)</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-hashtag"></i></span>
+                            <input type="text" class="form-control" id="serial" name="serial"
+                                   value="{{ form_data.serial if form_data.serial else '' }}">
+                        </div>
+                    </div>
                 </div>
 
-                <div class="mb-3"> {# Accesorios Recibidos (ancho completo) #}
-                    <label for="accesorios_recibidos" class="form-label">Accesorios Recibidos</label>
-                    <textarea class="form-control" id="accesorios_recibidos" name="accesorios_recibidos" rows="3">{{ form_data.accesorios_recibidos if form_data.accesorios_recibidos else '' }}</textarea>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="fecha_recepcion" class="form-label"><i class="fas fa-calendar-alt me-2"></i>Fecha de Recepción <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-calendar"></i></span>
+                            <input type="date" class="form-control" id="fecha_recepcion" name="fecha_recepcion" required
+                                   value="{{ form_data.fecha_recepcion if form_data.fecha_recepcion else (diagnostico.fecha_recepcion.split(' ')[0] if diagnostico and diagnostico.fecha_recepcion else '') }}">
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3"> {# Problema Reportado (ancho completo) #}
-                    <label for="problema_reportado" class="form-label">Problema Reportado <span class="text-danger">*</span></label>
-                    <textarea class="form-control" id="problema_reportado" name="problema_reportado" rows="5" required>{{ form_data.problema_reportado if form_data.problema_reportado else '' }}</textarea>
+
+                <div class="mb-3">
+                    <label for="componentes" class="form-label"><i class="fas fa-microchip me-2"></i>Especificaciones del Equipo</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-list"></i></span>
+                        <textarea class="form-control" id="componentes" name="componentes" rows="4" placeholder="Detalles de Memoria, Procesador, Disco Duro, etc.">{{ form_data.componentes if form_data.componentes else '' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="accesorios_recibidos" class="form-label"><i class="fas fa-box-open me-2"></i>Accesorios Recibidos</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-plug"></i></span>
+                        <textarea class="form-control" id="accesorios_recibidos" name="accesorios_recibidos" rows="3" placeholder="Cargador, mouse, teclado, etc.">{{ form_data.accesorios_recibidos if form_data.accesorios_recibidos else '' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="problema_reportado" class="form-label"><i class="fas fa-exclamation-triangle me-2"></i>Problema Reportado <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-comment-alt"></i></span>
+                        <textarea class="form-control" id="problema_reportado" name="problema_reportado" rows="5" required placeholder="Describa el problema reportado por el cliente">{{ form_data.problema_reportado if form_data.problema_reportado else '' }}</textarea>
+                    </div>
                 </div>
                 
-                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                     <button type="submit" class="btn btn-primary btn-lg">
-                        {{ 'Actualizar Datos del Equipo' if diagnostico else 'Guardar Datos del Equipo y Continuar' }}
+                        <i class="fas fa-save me-2"></i>{{ 'Actualizar Datos del Equipo' if diagnostico else 'Guardar Datos del Equipo y Continuar' }}
                     </button>
-                    <a href="{{ url_for('index') }}" class="btn btn-secondary btn-lg"> {# Volver al inicio #}
-                        Cancelar y Volver al Inicio
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-times me-2"></i>Cancelar y Volver al Inicio
                     </a>
                 </div>
             </form>
@@ -130,25 +199,21 @@
             const accordionButton = document.querySelector('.accordion-button');
             const fechaRecepcionInput = document.getElementById('fecha_recepcion');
 
-            // Función para establecer la opción seleccionada y actualizar la UI
             function setSelectedOption(value) {
                 tipoEquipoHiddenInput.value = value;
                 selectedTipoEquipoSpan.textContent = value;
 
-                // Eliminar la clase 'active' y 'btn-primary' de todos los botones y añadir 'btn-outline-primary'
                 tipoEquipoOptions.forEach(option => {
                     option.classList.remove('active', 'btn-primary');
                     option.classList.add('btn-outline-primary');
                 });
 
-                // Añadir la clase 'active' y 'btn-primary' al botón seleccionado
                 const selectedButton = document.querySelector(`.tipo-equipo-option[data-value="${value}"]`);
                 if (selectedButton) {
                     selectedButton.classList.add('active', 'btn-primary');
                     selectedButton.classList.remove('btn-outline-primary');
                 }
 
-                // Colapsar el acordeón después de la selección
                 const bsCollapse = new bootstrap.Collapse(accordionCollapse, {
                     toggle: false
                 });
@@ -157,14 +222,12 @@
                 accordionButton.setAttribute('aria-expanded', 'false');
             }
 
-            // Manejar clics en las opciones del acordeón
             tipoEquipoOptions.forEach(button => {
                 button.addEventListener('click', function() {
                     setSelectedOption(this.dataset.value);
                 });
             });
 
-            // Configuración inicial basada en los datos del formulario (si existen)
             const initialValue = tipoEquipoHiddenInput.value;
             if (initialValue) {
                 setSelectedOption(initialValue);
@@ -172,13 +235,10 @@
                 selectedTipoEquipoSpan.textContent = 'Ninguno';
             }
 
-            // Precargar la fecha actual si es un nuevo diagnóstico y el campo está vacío
-            // La lógica para 'diagnostico' y 'form_data' ya maneja la precarga desde el backend
-            // Si no hay valor del backend, se puede establecer la fecha actual aquí
             if (!fechaRecepcionInput.value) {
                 const today = new Date();
                 const year = today.getFullYear();
-                const month = String(today.getMonth() + 1).padStart(2, '0'); // Meses son 0-index
+                const month = String(today.getMonth() + 1).padStart(2, '0');
                 const day = String(today.getDate()).padStart(2, '0');
                 fechaRecepcionInput.value = `${year}-${month}-${day}`;
             }
