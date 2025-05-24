@@ -65,19 +65,6 @@ Una vez configurado, puedes iniciar la aplicación:
     ```
     ¡Ya puedes empezar a usar el sistema! 🎉
 
-## 📂 Estructura del Proyecto (Un Vistazo Rápido)
-
-Aquí te presento los archivos y directorios más importantes:
-
-*   `app.py`: El corazón de la aplicación Flask, maneja las rutas y la lógica principal.
-*   `database.py`: Contiene el código para inicializar la base de datos SQLite (`database.db`).
-*   `database.db`: El archivo de la base de datos donde se almacenan todos los datos (clientes, diagnósticos, etc.). Se crea automáticamente si no existe al ejecutar `database.py` o `app.py` por primera vez.
-*   `pdf_generator.py`: El script encargado de tomar los datos de un diagnóstico y generar el informe en formato PDF.
-*   `requirements.txt`: Lista todas las bibliotecas de Python que necesita el proyecto para funcionar.
-*   `static/`: Aquí se guardan los archivos estáticos como hojas de estilo CSS (`static/css/style.css`).
-*   `templates/`: Contiene los archivos HTML que definen la interfaz de usuario de la aplicación.
-*   `venv/`: El directorio del entorno virtual (si lo creaste).
-
 ## 🤝 ¿Quieres Contribuir?
 
 ¡Tu ayuda es bienvenida! Si encuentras errores, tienes sugerencias o quieres añadir nuevas funcionalidades, no dudes en:
@@ -87,4 +74,4 @@ Aquí te presento los archivos y directorios más importantes:
 
 ## Licencia
 
-Este proyecto es propiedad de Syon Net y se distribuye bajo la Licencia MIT. Consulta el archivo `LICENSE` para más detalles (si existe en el repositorio).
+Este proyecto es propiedad de Syon Net ©2025 y se distribuye bajo la Licencia MIT.
