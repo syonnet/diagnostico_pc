@@ -1,6 +1,6 @@
 /* General Body and HTML styles */
 body {
-    font-family: 'Inter', sans-serif; /* Using Inter font, common for modern UIs */
+    font-family: 'Inter', sans-serif; 
     background-color: #f0f2f5; /* Light grey background for a soft feel */
     color: #333; /* Darker text for readability */
     line-height: 1.6;

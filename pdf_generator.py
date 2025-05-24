@@ -58,6 +58,7 @@ def generate_diagnostico_pdf(diagnostico_data, cliente_data, output_path):
     story = []
 
     # Título del documento
+    story.append(Paragraph("Syon Net", styles['TitleStyle']))
     story.append(Paragraph("Informe de Diagnóstico de Equipo", styles['TitleStyle']))
     story.append(Spacer(1, 0.2 * inch))
 
@@ -104,6 +105,6 @@ def generate_diagnostico_pdf(diagnostico_data, cliente_data, output_path):
     story.append(Spacer(1, 0.5 * inch))
 
     # Pie de página o descargo de responsabilidad
-    story.append(Paragraph("Este informe es generado automáticamente por el Sistema de Gestión de Diagnósticos de PC.", styles['Disclaimer']))
+    story.append(Paragraph("Este informe es generado automáticamente por Syon Net.", styles['Disclaimer']))
 
     doc.build(story)

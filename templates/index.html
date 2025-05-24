@@ -1,182 +1,290 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Inicio - Gestión de Diagnósticos de PC</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+
     <style>
-        body {
-            background-color: #f0f2f5; /* Usar el color de fondo general del style.css */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
+      body {
+        font
+        background-color: #f0f2f5; /* Color de fondo de fallback */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px; /* Añadir padding para evitar que el contenido toque los bordes en móviles */
+        box-sizing: border-box; /* Incluir padding en el tamaño total */
+
+        /* Estilos para la imagen de fondo con degradado */
+        background-image: linear-gradient(
+            to bottom,
+            rgba(21, 25, 32, 0.8), /* Degradado de un color casi transparente */
+            rgba(121, 161, 221, 0.9) /* a un color más opaco para el fondo */
+          ),
+          url('https://picsum.photos/1920/1080?random=1'); /* Imagen de Lorem Picsum */
+        background-size: cover; /* Cubre todo el fondo */
+        background-position: center; /* Centra la imagen */
+        background-attachment: fixed; /* La imagen se mantiene fija al hacer scroll */
+      }
+      .welcome-card {
+        /* Contenedor principal para la página de inicio */
+        background-color:rgba(255, 255, 255, 0.66);
+        padding: 40px;
+        border-radius: 1rem; /* Más redondeado, como las tarjetas del dashboard */
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); /* Sombra más fuerte */
+        text-align: center;
+        max-width: 900px; /* Limitar el ancho para que no sea demasiado grande */
+        width: 100%; /* Asegurar que ocupe el ancho disponible */
+        margin: auto; /* Centrar la tarjeta */
+      }
+      .welcome-card h1 {
+        color: #0056b3; /* Color de encabezado más oscuro */
+        margin-bottom: 20px;
+        font-size: 2.2em; /* Ajustar tamaño de fuente para mejor legibilidad */
+      }
+      .welcome-card p.lead {
+        font-size: 1.25em;
+        color: #495057;
+        margin-bottom: 30px;
+      }
+      .action-button-item {
+        /* Estilo para cada botón/tarjeta de acción */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        text-decoration: none; /* Eliminar subrayado de enlaces */
+        color: inherit; /* Heredar color de texto */
+        min-height: 120px; /* Altura mínima para las "tarjetas" de botón */
+        width: 100%; /* Asegurar que ocupen el ancho completo de su columna */
+      }
+      .action-button-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+      }
+      .action-button-item i {
+        font-size: 2.5rem; /* Iconos más grandes */
+        margin-bottom: 10px;
+      }
+      .action-button-item span {
+        font-weight: bold;
+        font-size: 1.1em;
+        text-align: center; /* Centrar el texto del botón */
+      }
+
+      /* Colores específicos para los botones/tarjetas de acción */
+      .action-button-item.bg-success {
+        background-color: #28a745 !important;
+        color: #ffffff;
+      }
+      .action-button-item.bg-info {
+        background-color: #17a2b8 !important;
+        color: #ffffff;
+      }
+      .action-button-item.bg-primary {
+        background-color: #007bff !important;
+        color: #ffffff;
+      }
+      .action-button-item.bg-secondary {
+        background-color: #6c757d !important;
+        color: #ffffff;
+      }
+      .action-button-item.bg-dark {
+        background-color: #343a40 !important;
+        color: #ffffff;
+      }
+      .action-button-item.bg-danger {
+        background-color: #dc3545 !important;
+        color: #ffffff;
+      }
+
+      /* Ajustes para el espaciado de las columnas en pantallas pequeñas */
+      .action-buttons-row > div {
+        margin-bottom: 15px; /* Espacio entre las filas de botones en pantallas pequeñas */
+      }
+      @media (min-width: 768px) {
+        .action-buttons-row > div {
+          margin-bottom: 0; /* Eliminar el margen inferior en pantallas más grandes */
         }
-        .welcome-card { /* Contenedor principal para la página de inicio */
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 1rem; /* Más redondeado, como las tarjetas del dashboard */
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15); /* Sombra más fuerte */
-            text-align: center;
-            max-width: 900px; /* Limitar el ancho para que no sea demasiado grande */
-            width: 100%; /* Asegurar que ocupe el ancho disponible */
-            margin: auto; /* Centrar la tarjeta */
+      }
+      /* Estilo específico para el botón de Iniciar Sesión cuando no hay usuario */
+      .login-button-container {
+        display: flex;
+        justify-content: center; /* Centrar el botón horizontalmente */
+        margin-top: 20px; /* Espacio superior */
+      }
+      .login-button-item {
+        /* Usar clases de Bootstrap para un botón estándar */
+        padding: 10px 20px; /* Ajustar padding para un botón normal */
+        border-radius: 0.5rem; /* Bordes redondeados estándar */
+        font-weight: 600;
+        transition: all 0.2s ease-in-out;
+        text-decoration: none;
+        color: #ffffff; /* Color de texto blanco para botón primario */
+        background-color: #007bff; /* Color de fondo primario */
+        border: 1px solid #007bff; /* Borde del mismo color */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px; /* Espacio entre icono y texto */
+        width: auto; /* Ancho automático, no 100% */
+        max-width: 250px; /* Limitar el ancho máximo para que no sea excesivamente grande */
+      }
+      .login-button-item:hover {
+        background-color: #0056b3;
+        border-color: #0056b3;
+        transform: translateY(-1px);
+      }
+      .login-button-item i {
+        font-size: 1.5rem; /* Icono de tamaño más pequeño para un botón normal */
+        margin-bottom: 0; /* Eliminar margen inferior del icono */
+      }
+
+      /* Estilos para la imagen principal (logo) */
+      .main-image-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 30px; /* Espacio debajo de la imagen */
+      }
+
+      .main-image {
+        width: 180px; /* Ancho fijo para la imagen */
+        height: 180px; /* Altura fija para la imagen, igual al ancho para que sea un círculo perfecto */
+        object-fit: cover; /* Asegura que la imagen cubra el área sin distorsionarse */
+        border-radius: 50%; /* ¡Hace la imagen redonda! */
+        border: 5px solid #007bff; /* Borde de color primario */
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); /* Sombra más pronunciada para un efecto flotante */
+        transition: transform 0.3s ease-in-out; /* Transición suave para hover */
+      }
+
+      .main-image:hover {
+        transform: scale(1.05); /* Ligeramente más grande al pasar el ratón */
+      }
+
+      @media (max-width: 767px) {
+        .main-image {
+          width: 120px; /* Ajustar tamaño en móviles */
+          height: 120px; /* Ajustar tamaño en móviles */
         }
         .welcome-card h1 {
-            color: #0056b3; /* Color de encabezado más oscuro */
-            margin-bottom: 20px;
+          font-size: 1.8em; /* Ajustar tamaño de fuente en móviles */
         }
-        .welcome-card p.lead {
-            font-size: 1.25em;
-            color: #495057;
-            margin-bottom: 30px;
-        }
-        .action-button-item { /* Estilo para cada botón/tarjeta de acción */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-            text-decoration: none; /* Eliminar subrayado de enlaces */
-            color: inherit; /* Heredar color de texto */
-            min-height: 120px; /* Altura mínima para las "tarjetas" de botón */
-            width: 100%; /* Asegurar que ocupen el ancho completo de su columna */
-        }
-        .action-button-item:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-        }
-        .action-button-item i {
-            font-size: 2.5rem; /* Iconos más grandes */
-            margin-bottom: 10px;
-        }
-        .action-button-item span {
-            font-weight: bold;
-            font-size: 1.1em;
-            text-align: center; /* Centrar el texto del botón */
-        }
-
-        /* Colores específicos para los botones/tarjetas de acción */
-        .action-button-item.bg-success { background-color: #28a745 !important; color: #ffffff; }
-        .action-button-item.bg-info { background-color: #17a2b8 !important; color: #ffffff; }
-        .action-button-item.bg-primary { background-color: #007bff !important; color: #ffffff; }
-        .action-button-item.bg-secondary { background-color: #6c757d !important; color: #ffffff; }
-        .action-button-item.bg-dark { background-color: #343a40 !important; color: #ffffff; }
-        .action-button-item.bg-danger { background-color: #dc3545 !important; color: #ffffff; }
-
-        /* Ajustes para el espaciado de las columnas en pantallas pequeñas */
-        .action-buttons-row > div {
-            margin-bottom: 15px; /* Espacio entre las filas de botones en pantallas pequeñas */
-        }
-        @media (min-width: 768px) {
-            .action-buttons-row > div {
-                margin-bottom: 0; /* Eliminar el margen inferior en pantallas más grandes */
-            }
-        }
-        /* Estilo específico para el botón de Iniciar Sesión cuando no hay usuario */
-        .login-button-container {
-            display: flex;
-            justify-content: center; /* Centrar el botón horizontalmente */
-            margin-top: 20px; /* Espacio superior */
-        }
-        .login-button-item {
-            /* Usar clases de Bootstrap para un botón estándar */
-            /* Quitar estilos de action-button-item que lo hacen grande */
-            padding: 10px 20px; /* Ajustar padding para un botón normal */
-            border-radius: 0.5rem; /* Bordes redondeados estándar */
-            font-weight: 600;
-            transition: all 0.2s ease-in-out;
-            text-decoration: none;
-            color: #ffffff; /* Color de texto blanco para botón primario */
-            background-color: #007bff; /* Color de fondo primario */
-            border: 1px solid #007bff; /* Borde del mismo color */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px; /* Espacio entre icono y texto */
-            width: auto; /* Ancho automático, no 100% */
-            max-width: 250px; /* Limitar el ancho máximo para que no sea excesivamente grande */
-        }
-        .login-button-item:hover {
-            background-color: #0056b3;
-            border-color: #0056b3;
-            transform: translateY(-1px);
-        }
-        .login-button-item i {
-            font-size: 1.5rem; /* Icono de tamaño más pequeño para un botón normal */
-            margin-bottom: 0; /* Eliminar margen inferior del icono */
-        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <div class="welcome-card">
-            <h1 class="display-4">Bienvenido al Sistema de Gestión de Diagnósticos de PC</h1>
-            <p class="lead">Optimiza el registro y seguimiento de los servicios de reparación de equipos de cómputo.</p>
-            <hr class="my-4">
-            <p>
-                {% if g.user %}
-                    ¡Hola, {{ g.user.username }}! Selecciona una opción para comenzar:
-                {% endif %}
-            </p>
-            <div class="row g-3 action-buttons-row"> {# Usar el sistema de grid de Bootstrap #}
-                {% if g.user %}
-                    <div class="col-12 col-md-4">
-                        <a href="{{ url_for('iniciar_diagnostico') }}" class="action-button-item bg-success">
-                            <i class="bi bi-plus-circle"></i>
-                            <span>Iniciar Nuevo Diagnóstico</span>
-                        </a>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <a href="{{ url_for('listar_clientes') }}" class="action-button-item bg-info">
-                            <i class="bi bi-people"></i>
-                            <span>Gestionar Clientes</span>
-                        </a>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <a href="{{ url_for('listar_diagnosticos') }}" class="action-button-item bg-secondary">
-                            <i class="bi bi-list-ul"></i>
-                            <span>Gestionar Diagnósticos</span>
-                        </a>
-                    </div>
-                    {% if g.user.role.lower() == 'admin' %}
-                    <div class="col-12 col-md-4">
-                        <a href="{{ url_for('listar_usuarios') }}" class="action-button-item bg-dark">
-                            <i class="bi bi-person-gear"></i>
-                            <span>Técnicos</span>
-                        </a>
-                    </div>
-                    {% endif %}
-                    <div class="col-12 col-md-4">
-                        <a href="{{ url_for('dashboard') }}" class="action-button-item bg-primary">
-                            <i class="bi bi-speedometer2"></i>
-                            <span>Panel de Control</span>
-                        </a>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <a href="{{ url_for('logout') }}" class="action-button-item bg-danger">
-                            <i class="bi bi-box-arrow-right"></i>
-                            <span>Cerrar Sesión</span>
-                        </a>
-                    </div>
-                {% else %}
-                    <div class="col-12 login-button-container"> {# Contenedor específico para el botón de login #}
-                        <a href="{{ url_for('login') }}" class="login-button-item">
-                            <i class="bi bi-box-arrow-in-right"></i>
-                            <span>Iniciar Sesión</span>
-                        </a>
-                    </div>
-                {% endif %}
-            </div>
+      <div class="welcome-card">
+        <div class="main-image-container">
+          <img
+            src="https://i.postimg.cc/nLw6zc55/logo2.png"
+            alt="Logo Principal"
+            class="main-image"
+            onerror="this.onerror=null; this.src='https://placehold.co/180x180/cccccc/000000?text=Error+Carga+Imagen';"
+          />
         </div>
+
+        <h1 class="display-4">
+          Sistema de Gestión de Diagnósticos de PC
+        </h1>
+        <p class="lead">
+          Registro y seguimiento de los servicios de reparación de
+          equipos de cómputo.
+        </p>
+        <hr class="my-4" />
+        <p>
+          {% if g.user %} ¡Hola, {{ g.user.username }}! Selecciona una opción
+          para comenzar: {% endif %}
+        </p>
+        <div class="row g-3 action-buttons-row">
+          {# Usar el sistema de grid de Bootstrap #} {% if g.user %}
+          <div class="col-12 col-md-4">
+            <a
+              href="{{ url_for('iniciar_diagnostico') }}"
+              class="action-button-item bg-success"
+            >
+              <i class="bi bi-plus-circle"></i>
+              <span>Iniciar Nuevo Diagnóstico</span>
+            </a>
+          </div>
+          <div class="col-12 col-md-4">
+            <a
+              href="{{ url_for('listar_clientes') }}"
+              class="action-button-item bg-info"
+            >
+              <i class="bi bi-people"></i>
+              <span>Gestionar Clientes</span>
+            </a>
+          </div>
+          <div class="col-12 col-md-4">
+            <a
+              href="{{ url_for('listar_diagnosticos') }}"
+              class="action-button-item bg-secondary"
+            >
+              <i class="bi bi-list-ul"></i>
+              <span>Gestionar Diagnósticos</span>
+            </a>
+          </div>
+          {% if g.user.role.lower() == 'admin' %}
+          <div class="col-12 col-md-4">
+            <a
+              href="{{ url_for('listar_usuarios') }}"
+              class="action-button-item bg-dark"
+            >
+              <i class="bi bi-person-gear"></i>
+              <span>Técnicos</span>
+            </a>
+          </div>
+          {% endif %}
+          <div class="col-12 col-md-4">
+            <a
+              href="{{ url_for('dashboard') }}"
+              class="action-button-item bg-primary"
+            >
+              <i class="bi bi-speedometer2"></i>
+              <span>Panel de Control</span>
+            </a>
+          </div>
+          <div class="col-12 col-md-4">
+            <a
+              href="{{ url_for('logout') }}"
+              class="action-button-item bg-danger"
+            >
+              <i class="bi bi-box-arrow-right"></i>
+              <span>Cerrar Sesión</span>
+            </a>
+          </div>
+          {% else %}
+          <div class="col-12 login-button-container">
+            {# Contenedor específico para el botón de login #}
+            <a href="{{ url_for('login') }}" class="login-button-item">
+              <i class="bi bi-box-arrow-in-right"></i>
+              <span>Iniciar Sesión</span>
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
+  </body>
 </html>
